@@ -7,6 +7,11 @@ const path = require('path');
 const app = express();
 const router = express.Router();
 
+const friendsRoutes = require('./friends');
+const eventsRoutes = require('./events');
+const healthRoutes = require('./health');
+const profileRoutes = require('./profile');
+
 // Middleware to parse JSON bodies
 app.use(express.static(path.join(__dirname, '../public'))); 
 app.use(express.json());
@@ -102,9 +107,11 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
-const profileRoutes = require('./profile');
 
 // All /profile routes are protected
 app.use('/profile', verifyToken, profileRoutes);
+app.use('/friends', friendsRoutes);
+app.use('/events', eventsRoutes);
+app.use('/health', healthRoutes);
 
 
