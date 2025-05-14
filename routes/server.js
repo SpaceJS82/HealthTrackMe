@@ -101,3 +101,10 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+const profileRoutes = require('./profile');
+
+// All /profile routes are protected
+app.use('/profile', verifyToken, profileRoutes);
+
+

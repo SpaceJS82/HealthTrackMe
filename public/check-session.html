@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Session Check</title>
+</head>
+<body>
+  <h1>Session Checker</h1>
+  <div id="session-status">Loading session...</div>
+
+  <script>
+    async function checkSession() {
+      try {
+        const response = await fetch('/check-session', {
+          method: 'GET',
+          credentials: 'include' // 🔑 This ensures cookies (session) are sent
+        });
+
+        const data = await response.json();
+        const display = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+        document.getElementById('session-status').textContent = display;
+      } catch (error) {
+        document.getElementById('session-status').textContent = 'Error checking session';
+        console.error(error);
+      }
+    }
+
+    checkSession();
+  </script>
+</body>
+</html>
