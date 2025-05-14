@@ -1,17 +1,11 @@
-require('dotenv').config();
-const mysql = require('mysql2');
+// db.js
+const knex = require('knex');
+const config = require('./knexfile.js');
 
-const connection =
-mysql.createConnection({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE
-});
+// Determine the environment, defaulting to 'development'
+const env = process.env.NODE_ENV || 'development';
 
-connection.connect((err) => {
-    if (err) throw err;
-    console.log('Connected to database');
-});
+// Initialize Knex with the appropriate configuration
+const db = knex(config[env]);
 
-module.exports = connection;
+module.exports = db;
