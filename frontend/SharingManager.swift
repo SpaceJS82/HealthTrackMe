@@ -50,11 +50,31 @@ class SharingManager {
     }
     
     
+    //Error handeling
+    public func displayError(error: APIErrorType, on: UIViewController, retryAction: (()->())? = nil) {
+        let alert = UIAlertController(title: "\("Error".localized()) \(error.rawValue)", message: "Something went wrong.".localized(), preferredStyle: .alert)
+        
+        if let action = retryAction {
+            alert.addAction(UIAlertAction(title: "Retry".localized(), style: .default, handler: { _ in
+                action()
+            }))
+        }
+        
+        alert.addAction(UIAlertAction(title: "Cancel".localized(), style: .cancel))
+        
+        on.present(alert, animated: true)
+        
+    }
+    
+    
     //Classes
     public class PersonData {
         var id: Int = 0
         var name: String = ""
         var username: String = ""
+        
+        var sleepScore: Double = 0.6
+        var numberOfWorkout: Int = 1
         
         convenience init(id: Int, name: String, username: String) {
             self.init()
