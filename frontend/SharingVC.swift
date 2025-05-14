@@ -33,8 +33,6 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        fatalError()
-        
         view.backgroundColor = .groupedBackground
         
         //Navigation
@@ -81,7 +79,9 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
         SharingManager.shared.getEventData { data, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    
+                    SharingManager.shared.displayError(error: error, on: self) {
+                        self.refresh()
+                    }
                 } else {
                     self.headerView.refresh(with: data)
                 }
@@ -93,7 +93,9 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
         SharingManager.shared.getPersonData { data, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    
+                    SharingManager.shared.displayError(error: error, on: self) {
+                        self.refresh()
+                    }
                 } else {
                     self.data = data
                     self.tableView.reloadData()
@@ -135,12 +137,12 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        return 95
+        return 85
     }
     
     func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
         if let cell = cell as? PersonCell {
-            
+            cell.refresh(with: self.data[indexPath.row])
         }
     }
     
@@ -157,6 +159,8 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
         private let highlightsLabel = UILabel()
         private let eventsStack = MyHStack()
         
+        private let frendsTitle = UILabel()
+        
         override func layoutSubviews() {
             super.layoutSubviews()
             
@@ -164,6 +168,8 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
             
             highlightsLabel.frame = CGRect(x: 15, y: titleView.frame.maxY + 30, width: self.frame.width - 30, height: 40)
             eventsStack.frame = CGRect(x: 0, y: highlightsLabel.frame.maxY + 2, width: self.frame.width, height: 288)
+            
+            frendsTitle.frame = CGRect(x: 15, y: eventsStack.frame.maxY + 30, width: self.frame.width - 30, height: 40)
             
         }
         
@@ -183,6 +189,12 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
             self.addSubview(highlightsLabel)
             
             self.addSubview(eventsStack)
+            
+            frendsTitle.text = "Friends".localized()
+            frendsTitle.font = UIFont.roundedFont(ofSize: 17, weight: .semibold)
+            frendsTitle.textColor = .title
+            frendsTitle.textAlignment = .left
+            self.addSubview(frendsTitle)
             
         }
         
@@ -290,19 +302,16 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
                 imageBackground.backgroundColor = .groupedBackground
                 self.addSubview(imageBackground)
                 
-                imageView.image = UIImage(systemName: "figure.run.treadmill")
                 imageView.contentMode = .scaleAspectFit
                 imageView.tintColor = .customGreen
                 imageBackground.addSubview(imageView)
                 
-                titleView.text = "214kcal"
                 titleView.textAlignment = .center
                 titleView.textColor = .customGreen
                 titleView.adjustsFontSizeToFitWidth = true
                 titleView.font = .roundedFont(ofSize: 20, weight: .semibold)
                 self.addSubview(titleView)
                 
-                subTitleView.text = "Indoor Running"
                 subTitleView.textAlignment = .center
                 subTitleView.textColor = .title
                 subTitleView.adjustsFontSizeToFitWidth = true
@@ -324,6 +333,94 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
     }
     
     private class PersonCell: UITableViewCell {
+        
+        //Data
+        private var data: SharingManager.PersonData?
+        
+        //UI
+        private let backView = UIView()
+        private let iconView = UILabel()
+        
+        private let nameLabel = UILabel()
+        private let scoreLabel = UILabel()
+        
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            
+            backView.frame = CGRect(x: 15, y: 0, width: self.frame.width - 30, height: self.frame.height - 10)
+            backView.layer.cornerRadius = 24
+            
+            iconView.frame = CGRect(x: 15, y: (backView.frame.height - 50) / 2, width: 50, height: 50)
+            iconView.layer.cornerRadius = 25
+            
+            let x = iconView.frame.maxX
+            nameLabel.frame = CGRect(x: x + 15, y: (backView.frame.height / 2) - 25, width: backView.frame.width - x - 45, height: 25)
+            scoreLabel.frame = CGRect(x: x + 15, y: nameLabel.frame.maxY, width: backView.frame.width - x - 45, height: 25)
+            
+        }
+        
+        override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
+            super.init(style: style, reuseIdentifier: reuseIdentifier)
+            
+            self.contentView.isHidden = true
+            self.backgroundColor = .clear
+            
+            backView.layer.cornerCurve = .continuous
+            backView.backgroundColor = .groupedSecondaryBackground
+            self.addSubview(backView)
+            
+            iconView.backgroundColor = .groupedBackground
+            iconView.font = .roundedFont(ofSize: 24, weight: .bold)
+            iconView.textColor = .title
+            iconView.textAlignment = .center
+            iconView.clipsToBounds = true
+            backView.addSubview(iconView)
+            
+            nameLabel.textAlignment = .left
+            nameLabel.textColor = .title
+            nameLabel.font = .roundedFont(ofSize: 17, weight: .semibold)
+            backView.addSubview(nameLabel)
+            
+            scoreLabel.textAlignment = .left
+            backView.addSubview(scoreLabel)
+            
+        }
+        
+        public func refresh(with: SharingManager.PersonData) {
+            self.data = with
+            
+            if let initial = data?.name.first {
+                self.iconView.text = String(initial)
+            }
+            
+            self.nameLabel.text = data?.name
+            
+            let firstPart = "Sleep".localized()
+            let secondPart = "\(Int((data?.sleepScore ?? 0) * 100))/100"
+
+            let attributedText = NSMutableAttributedString(
+                string: firstPart + " ",
+                attributes: [
+                    .font: UIFont.roundedFont(ofSize: 17, weight: .regular),
+                    .foregroundColor: UIColor.secondaryText
+                ]
+            )
+
+            attributedText.append(NSAttributedString(
+                string: secondPart,
+                attributes: [
+                    .font: UIFont.roundedFont(ofSize: 17, weight: .semibold),
+                    .foregroundColor: UIColor.customPurple
+                ]
+            ))
+
+            self.scoreLabel.attributedText = attributedText
+            
+        }
+        
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
         
     }
 
