@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <form id="secureForm">
+        <label for="username">Uporabnisko ime:</label>
+        <input type="text" id="username" name="username">
+        <button type="submit">Išči</button>
+      </form>
+      <div id="secureResult"></div>
+
+</body>
+<script>
+    document.getElementById('secureForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const username = e.target.username.value;
+      fetch(`/secure-query?username=${encodeURIComponent(username)}`)
+        .then(res => res.text())
+        .then(data => {
+          document.getElementById('secureResult').textContent = data;
+        })
+        .catch(err => {
+          document.getElementById('secureResult').textContent = 'Napaka pri iskanju.';
+        });
+    });
+</script>
+</html>
