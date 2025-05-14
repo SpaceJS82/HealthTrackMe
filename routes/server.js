@@ -1,4 +1,5 @@
 const express = require('express');
+const session = require('express-session');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const db = require('./db'); // Knex instance
@@ -6,18 +7,22 @@ const db = require('./db'); // Knex instance
 const app = express();
 const router = express.Router();
 
-app.use(express.static(path.join(__dirname, '../public'))); // Static files (HTML, CSS, JS)
-app.use(express.json()); // Parse JSON request bodies
+app.use(express.static(path.join(__dirname, '../public'))); // Adjust the path as necessary
+app.use(express.json()); // Middleware to parse JSON bodies
+
+app.use(session({
+  secret: 'your-secret-key', // Change this to a secure secret key
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false } // Set to true if using HTTPS
+}));
+
+router.get('/check-session', (req, res) => {
+  res.json(req.session.user || 'No session');
+});
 
 // Serve login page
-app.get('/login.html', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public', 'login.html'));
-});
 
-// Serve register page (optional if you have one)
-app.get('/register.html', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public', 'register.html'));
-});
 
 // Handle login POST request
 router.post('/login', async (req, res) => {
@@ -31,10 +36,18 @@ router.post('/login', async (req, res) => {
 
         const user = users[0];
 
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(401).send('Incorrect password');
-        }
+    // Compare the provided password with the stored hash
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).send('Incorrect password');
+    }
+
+    req.session.user = {
+            id: user.iduser,
+            username: user.username,
+            name: user.name
+        };
+
 
         res.status(200).send('Login successful');
     } catch (error) {
