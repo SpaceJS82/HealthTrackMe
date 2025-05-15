@@ -11,41 +11,52 @@ import HealthKit
 class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSource, UIScrollViewDelegate {
     
     //Data
+    private var isFirstRefresh: Bool = true
+    private var isRefreshing: Bool = false
     private var data: [SharingManager.PersonData] = []
-    
+
     //UI
     private let navigationTitleLabel = NavigationLabel()
-    
+
     private let headerView = SharingHeader()
-    
+
     private let refreshControl = UIRefreshControl()
     private let tableView = UITableView(frame: .zero, style: .grouped)
-    
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+
+        if !self.isFirstRefresh {
+            self.refresh()
+        }
+
+    }
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        
+
         self.setGradient(color1: UIColor.secondaryText.withAlphaComponent(0.15), color2: .groupedBackground.withAlphaComponent(0.15))
-        
+
         tableView.frame = view.bounds
-        
+
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+
         view.backgroundColor = .groupedBackground
-        
+
         //Navigation
         navigationTitleLabel.text = "Sharing".localized()
         navigationTitleLabel.textColor = .title
         navigationTitleLabel.font = UIFont.roundedFont(ofSize: 17, weight: .semibold)
         navigationTitleLabel.sizeToFit()
         self.navigationItem.titleView = navigationTitleLabel
-        
+
         self.navigationItem.rightBarButtonItems = [
-            self.getNavigationItem(image: "person.2.badge.gearshape.fill", target: nil, action: nil, backgroundColor: .groupedBackground)
+            self.getNavigationItem(image: "person.2.badge.gearshape.fill", target: self, action: #selector(onFriendsRequest), backgroundColor: .groupedSecondaryBackground)
         ]
-        
+
 
         tableView.register(PersonCell.self, forCellReuseIdentifier: "cell")
         tableView.delegate = self
@@ -55,26 +66,34 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
         tableView.allowsSelection = false
         tableView.backgroundColor = .clear
         view.addSubview(tableView)
-        
+
         refreshControl.addTarget(self, action: #selector(onRefreshControl), for: .valueChanged)
         refreshControl.tintColor = .title
         tableView.refreshControl = refreshControl
-        
-        
+
+
         self.refresh()
     }
-    
+
+    @objc
+    private func onFriendsRequest() {
+        self.navigationController?.pushViewController(FriendRequestsVC(), animated: true)
+    }
+
     @objc
     private func onRefreshControl() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         self.refresh()
     }
-    
+
     @objc
     private func refresh() {
-        
+
+        guard !self.isRefreshing else { return }
+        self.isRefreshing = true
+
         let dispatchGroup = DispatchGroup()
-        
+
         dispatchGroup.enter()
         SharingManager.shared.getEventData { data, error in
             DispatchQueue.main.async {
@@ -88,7 +107,7 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
             }
             dispatchGroup.leave()
         }
-        
+
         dispatchGroup.enter()
         SharingManager.shared.getPersonData { data, error in
             DispatchQueue.main.async {
@@ -103,9 +122,11 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
             }
             dispatchGroup.leave()
         }
-        
+
         dispatchGroup.notify(queue: .main) {
             self.refreshControl.endRefreshing()
+            self.isRefreshing = false
+            self.isFirstRefresh = false
         }
         
     }
