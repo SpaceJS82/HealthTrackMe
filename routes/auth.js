@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const SECRET = 'your_secret_key'; // uporabi .env v praksi
+const JWT_SECRET = process.env.JWT_SECRET;
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -7,7 +7,7 @@ function authenticateToken(req, res, next) {
 
   if (!token) return res.sendStatus(401);
 
-  jwt.verify(token, SECRET, (err, user) => {
+  jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) return res.sendStatus(403);
 
     req.user = user; // { iduser, username }
@@ -15,4 +15,4 @@ function authenticateToken(req, res, next) {
   });
 }
 
-module.exports = { authenticateToken, SECRET };
+module.exports = { authenticateToken, JWT_SECRET };

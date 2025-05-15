@@ -2,6 +2,8 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
+const { authenticateToken } = require('./auth');
+
 
 const JWT_SECRET = 'your-secret-key';
 
@@ -15,10 +17,9 @@ const simpleAuthCheck = (req, res) => {
   });
 };
 
-router.get('/send-friend-request', simpleAuthCheck);
-router.get('/approve-friend-request', simpleAuthCheck);
-router.get('/decline-friend-request', simpleAuthCheck);
-router.get('/get-friends', simpleAuthCheck);
+
+router.get('/get-friends', authenticateToken);
 router.get('/get-friend-data', simpleAuthCheck);
+router.get('/delete-friendship', authenticateToken);
 
 module.exports = router;

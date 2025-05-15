@@ -3,9 +3,9 @@ const router = express.Router();
 const db = require('./db');
 const { authenticateToken } = require('./auth');
 
-// ✅ Pošlji povabilo
-router.post('/invites', authenticateToken, async (req, res) => {
-  const senderId = req.user.iduser;
+// Pošlji povabilo
+router.post('/', authenticateToken, async (req, res) => {
+  const senderId = req.user.id; 
   const { receiverId } = req.body;
 
   if (senderId === receiverId) {
@@ -26,10 +26,10 @@ router.post('/invites', authenticateToken, async (req, res) => {
   }
 });
 
-// ✅ Pridobi prejeta povabila
-router.get('/invites/received/:userId', authenticateToken, async (req, res) => {
+//Pridobi prejeta povabila
+router.get('/received/:userId', authenticateToken, async (req, res) => {
   const userId = parseInt(req.params.userId);
-  if (req.user.iduser !== userId) {
+  if (req.user.id !== userId) {
     return res.status(403).send('Forbidden');
   }
 
@@ -44,15 +44,15 @@ router.get('/invites/received/:userId', authenticateToken, async (req, res) => {
   }
 });
 
-// ✅ Sprejmi povabilo (in ga izbriši, ter ustvari prijateljstvo)
-router.post('/invites/:id/accept', authenticateToken, async (req, res) => {
+//Sprejmi povabilo (in ga izbriši, ter ustvari prijateljstvo)
+router.post('/:id/accept', authenticateToken, async (req, res) => {
   const inviteId = req.params.id;
 
   try {
     const invite = await db('friend_invite').where({ idinvite: inviteId }).first();
 
     if (!invite) return res.status(404).send('Invite not found');
-    if (invite.receiver_iduser !== req.user.iduser) {
+    if (invite.receiver_iduser !== req.user.id) {
       return res.status(403).send('Not your invite');
     }
 
@@ -72,15 +72,15 @@ router.post('/invites/:id/accept', authenticateToken, async (req, res) => {
   }
 });
 
-// ✅ Zavrni (izbriši) povabilo
-router.delete('/invites/:id', authenticateToken, async (req, res) => {
+//Zavrni (izbriši) povabilo
+router.delete('/:id', authenticateToken, async (req, res) => {
   const inviteId = req.params.id;
 
   try {
     const invite = await db('friend_invite').where({ idinvite: inviteId }).first();
 
     if (!invite) return res.status(404).send('Invite not found');
-    if (invite.receiver_iduser !== req.user.iduser && invite.sender_iduser !== req.user.iduser) {
+    if (invite.receiver_iduser !== req.user.id && invite.sender_iduser !== req.user.id) {
       return res.status(403).send('Not authorized to delete this invite');
     }
 

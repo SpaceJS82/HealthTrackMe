@@ -11,13 +11,15 @@ const friendsRoutes = require('./friends');
 const eventsRoutes = require('./events');
 const healthRoutes = require('./health');
 const profileRoutes = require('./profile');
+const inviteRoutes = require('./invites');
 
 // Middleware to parse JSON bodies
 app.use(express.static(path.join(__dirname, '../public'))); 
 app.use(express.json());
 
 // Secret key for JWT signing
-const JWT_SECRET = 'your-secret-key'; // Change to a more secure secret in production
+const JWT_SECRET = process.env.JWT_SECRET;
+ // Change to a more secure secret in production
 
 // Serve login page (optional, as you might just return an API response)
 
@@ -114,4 +116,7 @@ app.use('/friends', friendsRoutes);
 app.use('/events', eventsRoutes);
 app.use('/health', healthRoutes);
 
+app.use('/invites', inviteRoutes);
+
+module.exports = router;
 
