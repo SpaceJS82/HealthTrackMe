@@ -16,12 +16,30 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
     private var data: [SharingManager.PersonData] = []
 
     //UI
+    private let indicatorVC = ActivityIndicatorVC()
+
     private let navigationTitleLabel = NavigationLabel()
+    private var navigationButton: UIBarButtonItem!
 
     private let headerView = SharingHeader()
 
     private let refreshControl = UIRefreshControl()
     private let tableView = UITableView(frame: .zero, style: .grouped)
+
+    private let setUpButton = UIButton()
+    private let setUpExplanationView = UILabel()
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+
+        if self.isFirstRefresh {
+            self.present(self.indicatorVC, animated: false) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+                    self.indicatorVC.dismiss(animated: true)
+                }
+            }
+        }
+    }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
@@ -39,6 +57,10 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
 
         tableView.frame = view.bounds
 
+        setUpButton.frame = CGRect(x: (view.frame.width - 200) / 2, y: (view.frame.height) / 2 - 25, width: 200, height: 50)
+
+        setUpExplanationView.autoFrame(x: (view.frame.width - 200) / 2, y: setUpButton.frame.maxY + 15, width: 200)
+
     }
 
     override func viewDidLoad() {
@@ -53,11 +75,10 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
         navigationTitleLabel.sizeToFit()
         self.navigationItem.titleView = navigationTitleLabel
 
-        self.navigationItem.rightBarButtonItems = [
-            self.getNavigationItem(image: "person.2.badge.gearshape.fill", target: self, action: #selector(onFriendsRequest), backgroundColor: .groupedSecondaryBackground)
-        ]
+        self.navigationButton = self.getNavigationItem(image: "person.2.badge.gearshape.fill", target: self, action: #selector(onFriendsRequest), backgroundColor: .groupedSecondaryBackground)
 
 
+        tableView.isHidden = true
         tableView.register(PersonCell.self, forCellReuseIdentifier: "cell")
         tableView.delegate = self
         tableView.dataSource = self
@@ -70,6 +91,33 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
         refreshControl.addTarget(self, action: #selector(onRefreshControl), for: .valueChanged)
         refreshControl.tintColor = .title
         tableView.refreshControl = refreshControl
+
+
+        setUpButton.isHidden = true
+        setUpButton.backgroundColor = .customBlue
+        setUpButton.layer.cornerRadius = 20
+        setUpButton.layer.cornerCurve = .continuous
+        setUpButton.setTitle("Set up my profile".localized(), for: .normal)
+        setUpButton.setTitleColor(.white, for: .normal)
+        setUpButton.titleLabel?.font = .roundedFont(ofSize: 17, weight: .semibold)
+        setUpButton.addAction(UIAction(handler: { _ in
+            self.present(ThemeNavigationViewController(rootViewController: LoginVC(for: self)), animated: true)
+        }), for: .touchUpInside)
+        view.addSubview(setUpButton)
+
+        setUpExplanationView.isHidden = true
+        setUpExplanationView.text = "Here is some great explanation on how to do it.".localized()
+        setUpExplanationView.textAlignment = .left
+        setUpExplanationView.textColor = .secondaryText
+        setUpExplanationView.font = .roundedFont(ofSize: 14, weight: .regular)
+        setUpExplanationView.numberOfLines = 0
+        view.addSubview(setUpExplanationView)
+
+        if #available(iOS 18.0, *) {
+            indicatorVC.setDismissAction {
+                self.tabBarController?.setTabBarHidden(false, animated: true)
+            }
+        }
 
         self.refresh()
     }
@@ -86,7 +134,7 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
     }
 
     @objc
-    private func refresh() {
+    public func refresh() {
 
         guard !self.isRefreshing else { return }
         self.isRefreshing = true
@@ -115,7 +163,13 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
                         self.refresh()
                     }
                 } else {
-                    self.data = data
+                    self.data = data.sorted(by: {
+                        if $0.sleepScore == $1.sleepScore {
+                            return $0.sleepScore < $1.sleepScore
+                        } else {
+                            return $0.name < $1.name
+                        }
+                    })
                     self.tableView.reloadData()
                 }
             }
@@ -126,6 +180,14 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
             self.refreshControl.endRefreshing()
             self.isRefreshing = false
             self.isFirstRefresh = false
+
+            self.navigationItem.rightBarButtonItem = AuthManager.shared.willAutoLogin ? self.navigationButton : nil
+
+            self.tableView.isHidden = !AuthManager.shared.willAutoLogin
+            self.setUpButton.isHidden = AuthManager.shared.willAutoLogin
+            self.setUpExplanationView.isHidden = AuthManager.shared.willAutoLogin
+
+            self.indicatorVC.dismiss(animated: true)
         }
         
     }

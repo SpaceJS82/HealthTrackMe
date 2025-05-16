@@ -94,10 +94,10 @@ class FriendRequestsVC: UIViewController, UITableViewDelegate, UITableViewDataSo
     private func onAdd() {
         let alert = UIAlertController(title: "Add Friend".localized(), message: "By username", preferredStyle: .alert)
         alert.addTextField { textField in
-            textField.placeholder = "@example"
+            textField.placeholder = "Friend's username".localized()
             textField.becomeFirstResponder()
         }
-        
+
         alert.addAction(UIAlertAction(title: "Send request".localized(), style: .default, handler: { _ in
             if let username = alert.textFields?.first?.text {
                 SharingManager.shared.sendFriendRequest(to: username) { error in
@@ -114,57 +114,57 @@ class FriendRequestsVC: UIViewController, UITableViewDelegate, UITableViewDataSo
             }
         }))
         alert.addAction(UIAlertAction(title: "Cancel".localized(), style: .cancel))
-        
+
         alert.view.tintColor = .customBlue
-        
+
         self.present(alert, animated: true)
     }
-    
-    
+
+
     //TableView delegates
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return self.data.count
     }
-    
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         return tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! FriendRequestCell
     }
-    
+
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return 80
     }
-    
+
     func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
         if let cell = cell as? FriendRequestCell {
             cell.refresh(with: self.data[indexPath.row])
         }
     }
-    
-    
+
+
     //Cell
     private class FriendRequestCell: UITableViewCell {
-        
+
         //Data
         private var data: SharingManager.FriendRequest?
-        
+
         //UI
         private let backView = UIView()
         private let nameLabel = UILabel()
         private let usernameLabel = UILabel()
-        
+
         private let declineButton = UIButton()
         private let approveButton = UIButton()
-        
+
         override func layoutSubviews() {
             super.layoutSubviews()
-            
+
             backView.frame = CGRect(x: 15, y: 0, width: self.frame.width - 30, height: self.frame.height - 10)
             backView.layer.cornerRadius = 24
-            
-            nameLabel.frame = CGRect(x: 30, y: (backView.frame.height / 2) - 25, width: 200, height: 25)
-            usernameLabel.frame = CGRect(x: 30, y: nameLabel.frame.maxY, width: 200, height: 25)
-            
-            approveButton.frame = CGRect(x: backView.frame.width - 75, y: (backView.frame.height - 45) / 2, width: 45, height: 45)
+
+            nameLabel.frame = CGRect(x: 15, y: (backView.frame.height / 2) - 20, width: 200, height: 20)
+            usernameLabel.frame = CGRect(x: 15, y: nameLabel.frame.maxY, width: 200, height: 18)
+
+            approveButton.frame = CGRect(x: backView.frame.width - 60, y: (backView.frame.height - 45) / 2, width: 45, height: 45)
             approveButton.layer.cornerRadius = 45 / 2
             
             declineButton.frame = CGRect(x: approveButton.frame.minX - 55, y: (backView.frame.height - 45) / 2, width: 45, height: 45)

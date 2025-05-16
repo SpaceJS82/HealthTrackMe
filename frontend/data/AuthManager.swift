@@ -68,10 +68,37 @@ class AuthManager {
                     self.token = token
                     self.flushLoginQueue(with: .success(()))
                 } else {
+                    self.clearCredentials()
                     self.flushLoginQueue(with: .failure(NSError(domain: "NoToken", code: 401)))
                 }
+            case .failure(let error as NSError):
+                if error.code == 401 || error.code == 403 {
+                    self.clearCredentials()
+                }
+                self.flushLoginQueue(with: .failure(error))
             case .failure(let error):
                 self.flushLoginQueue(with: .failure(error))
+            }
+        }
+    }
+
+    func login(username: String, password: String, completion: @escaping (Bool) -> Void) {
+        let body = ["username": username, "password": password]
+
+        postRequest(endpoint: "/login", body: body) { result in
+            switch result {
+            case .success(let json):
+                if let token = json["token"] as? String {
+                    self.token = token
+                    self.savedUsername = username
+                    self.savedPassword = password
+                    self.hasCreatedAccount = true
+                    completion(true)
+                } else {
+                    completion(false)
+                }
+            case .failure:
+                completion(false)
             }
         }
     }
@@ -116,14 +143,32 @@ class AuthManager {
         }
 
         if token == nil {
-            login(completion: completion)
+            // Try login with saved credentials
+            login { result in
+                switch result {
+                case .success:
+                    completion(.success(()))
+                case .failure:
+                    self.signOut()
+                    completion(.failure(NSError(domain: "LoginFailed", code: 401)))
+                }
+            }
         } else {
+            // Validate current token
             checkToken { valid in
                 if valid {
                     completion(.success(()))
                 } else {
-                    self.token = nil
-                    self.login(completion: completion)
+                    // Try to re-login
+                    self.login { result in
+                        switch result {
+                        case .success:
+                            completion(.success(()))
+                        case .failure:
+                            self.signOut()
+                            completion(.failure(NSError(domain: "ReLoginFailed", code: 403)))
+                        }
+                    }
                 }
             }
         }
@@ -132,14 +177,50 @@ class AuthManager {
     // MARK: - Token Check
 
     private func checkToken(completion: @escaping (Bool) -> Void) {
-        authenticatedGET(endpoint: "/check-auth") { result in
-            switch result {
-            case .success:
-                completion(true)
-            case .failure:
-                completion(false)
-            }
+        guard let token = token else {
+            completion(false)
+            return
         }
+
+        guard let url = URL(string: baseURL + "/check-auth") else {
+            completion(false)
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("❌ Network error:", error)
+                self.clearCredentials()
+                self.signOut()
+                completion(false)
+                return
+            }
+
+            if let httpResponse = response as? HTTPURLResponse {
+                if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+                    print("❌ Unauthorized or forbidden")
+                    self.clearCredentials()
+                    self.signOut()
+                    completion(false)
+                    return
+                }
+            }
+
+            guard let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let _ = json["user"] as? [String: Any] else {
+                print("❌ Token check failed: invalid JSON")
+                self.clearCredentials()
+                self.signOut()
+                completion(false)
+                return
+            }
+
+            completion(true)
+        }.resume()
     }
 
     // MARK: - API Calls
@@ -373,5 +454,13 @@ class AuthManager {
 
             completion(.success(array))
         }.resume()
+    }
+
+
+    private func clearCredentials() {
+        self.token = nil
+        self.savedUsername = nil
+        self.savedPassword = nil
+        self.hasCreatedAccount = false
     }
 }
