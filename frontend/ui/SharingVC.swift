@@ -71,7 +71,6 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
         refreshControl.tintColor = .title
         tableView.refreshControl = refreshControl
 
-
         self.refresh()
     }
 

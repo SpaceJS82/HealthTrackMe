@@ -99,7 +99,19 @@ class FriendRequestsVC: UIViewController, UITableViewDelegate, UITableViewDataSo
         }
         
         alert.addAction(UIAlertAction(title: "Send request".localized(), style: .default, handler: { _ in
-            //
+            if let username = alert.textFields?.first?.text {
+                SharingManager.shared.sendFriendRequest(to: username) { error in
+                    DispatchQueue.main.async {
+                        if let error = error {
+                            SharingManager.shared.displayError(error: error, on: self)
+                        } else {
+                            self.refresh()
+                        }
+                    }
+                }
+            } else {
+                SharingManager.shared.displayError(error: .unknown, on: self)
+            }
         }))
         alert.addAction(UIAlertAction(title: "Cancel".localized(), style: .cancel))
         

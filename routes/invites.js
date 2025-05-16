@@ -5,24 +5,41 @@ const { authenticateToken } = require('./auth');
 
 // Pošlji povabilo
 router.post('/', authenticateToken, async (req, res) => {
-  const senderId = req.user.id; 
-  const { receiverId } = req.body;
+  const senderId = req.user.id;
+  const { username } = req.body;
+  console.log("🔔 Invite endpoint HIT");
 
-  if (senderId === receiverId) {
-    return res.status(400).send("Cannot invite yourself");
+  if (!username) {
+    return res.status(400).json({ error: "Missing username" });
   }
 
   try {
+    const receiver = await db('user')
+        .select('iduser')
+        .where({ username })
+        .first();
+
+    if (!receiver) {
+      return res.status(404).json({ error: "Receiver not found" });
+    }
+
+    const receiverId = receiver.iduser;
+
+    if (senderId === receiverId) {
+      return res.status(400).json({ error: "Cannot invite yourself" });
+    }
+
     await db('friend_invite').insert({
       sender_iduser: senderId,
       receiver_iduser: receiverId,
       date: new Date()
     });
 
-    res.status(201).send('Invite sent');
+    // ✅ Return proper JSON
+    res.status(201).json({ message: "Invite sent", success: true });
   } catch (err) {
     console.error(err);
-    res.status(500).send('Error sending invite');
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

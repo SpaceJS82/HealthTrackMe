@@ -8,9 +8,11 @@
 import UIKit
 
 public enum APIErrorType: Int {
-    case notFound = 404
+    case userNotFound = 404
     case internalServerError = 1
     case unknown = 300
+    case network = 2
+    case unauthorized = 200
 }
 
 class SharingManager {
@@ -25,7 +27,7 @@ class SharingManager {
             return instance
         }
     }
-    
+
     //Main page data
     public func getEventData(completion: @escaping ([EventData], APIErrorType?)->()) {
         let person = PersonData(id: 0, name: "Luka", username: "vercluka")
@@ -42,37 +44,108 @@ class SharingManager {
         ], nil)
     }
 
-    public func getPersonData(completion: @escaping ([PersonData], APIErrorType?)->()) {
-        completion([
-            PersonData(id: 0, name: "Luka", username: "luka"),
-            PersonData(id: 1, name: "Jaka", username: "jaka"),
-            PersonData(id: 2, name: "Klemen", username: "klemen"),
-        ], nil)
+    public func getPersonData(completion: @escaping ([PersonData], APIErrorType?) -> ()) {
+        AuthManager.shared.getFriends { result in
+            switch result {
+            case .success(let jsonArray):
+                let persons: [PersonData] = jsonArray.compactMap { dict in
+                    guard
+                        let id = dict["id"] as? Int,
+                        let name = dict["name"] as? String,
+                        let username = dict["username"] as? String
+                    else { return nil }
+
+                    return PersonData(id: id, name: name, username: username)
+                }
+
+                completion(persons, nil)
+
+            case .failure(let error):
+                print("❌ Failed to fetch friends:")
+                print(error)
+                completion([], .network) // or .unknown depending on your error type
+            }
+        }
     }
 
 
     //Friends managment
-    public func sendFriendRequest(to username: String, completion: @escaping ((APIErrorType?)->())) {
-
+    public func sendFriendRequest(to username: String, completion: @escaping (APIErrorType?) -> Void) {
+        AuthManager.shared.sendFriendRequest(to: username, completion: completion)
     }
 
-    public func answerFriendRequest(to username: String, approve: Bool, completion: @escaping ((APIErrorType?)->())) {
-        completion(nil)
+    public func answerFriendRequest(to username: String, approve: Bool, completion: @escaping ((APIErrorType?) -> ())) {
+        // You’ll need the invite ID, so fetch the current requests first
+        getFriendRequests { requests, error in
+            guard error == nil else {
+                completion(error)
+                return
+            }
+
+            guard let match = requests.first(where: { $0.sender.username == username }) else {
+                completion(.userNotFound)
+                return
+            }
+
+            AuthManager.shared.answerFriendRequest(id: match.id, approve: approve, completion: completion)
+        }
     }
 
-    public func removeFriend(to username: String, completion: @escaping ((APIErrorType?)->())) {
+    public func removeFriend(to username: String, completion: @escaping ((APIErrorType?) -> ())) {
+        AuthManager.shared.getFriends { result in
+            switch result {
+            case .success(let friends):
+                guard let friend = friends.first(where: { $0["username"] as? String == username }),
+                      let id = friend["id"] as? Int else {
+                    print("❌ Friend not found with username:", username)
+                    completion(.userNotFound)
+                    return
+                }
 
+                AuthManager.shared.removeFriend(withId: id, completion: completion)
+
+            case .failure(let error):
+                print("❌ Failed to get friends:", error)
+                completion(.network)
+            }
+        }
     }
 
-    public func getFriendRequests(completion: @escaping (([FriendRequest], APIErrorType?)->())) {
+    public func getFriendRequests(completion: @escaping (([FriendRequest], APIErrorType?) -> ())) {
+        AuthManager.shared.getFriendRequests { result in
+            switch result {
+            case .success(let rawRequests):
+                print("📦 Raw parsed objects:", rawRequests)
 
-        let person1 = PersonData(id: 0, name: "Klemen", username: "klemen")
-        let person2 = PersonData(id: 1, name: "Jaka", username: "jaka")
+                let formatter = ISO8601DateFormatter()
+                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
-        completion([
-            FriendRequest(id: 0, date: .now, sender: person1),
-            FriendRequest(id: 1, date: .now, sender: person2),
-        ], nil)
+                let requests: [FriendRequest] = rawRequests.compactMap { dict in
+                    guard
+                        let id = dict["id"] as? Int,
+                        let dateString = dict["date"] as? String,
+                        let date = formatter.date(from: dateString),
+                        let senderDict = dict["sender"] as? [String: Any],
+                        let senderId = senderDict["id"] as? Int,
+                        let senderName = senderDict["name"] as? String,
+                        let senderUsername = senderDict["username"] as? String
+                    else {
+                        print("❌ Failed to parse friend request:", dict)
+                        return nil
+                    }
+
+                    let sender = PersonData(id: senderId, name: senderName, username: senderUsername)
+                    return FriendRequest(id: id, date: date, sender: sender)
+                }
+
+                print("✅ Final FriendRequest objects:", requests)
+                completion(requests, nil)
+
+            case .failure(let error):
+                print("❌ Network error:", error)
+                completion([], .network)
+            }
+        }
     }
 
 
