@@ -30,30 +30,51 @@ router.post('/', authenticateToken, async (req, res) => {
 router.get('/received/:userId', authenticateToken, async (req, res) => {
   const userId = parseInt(req.params.userId);
   if (req.user.id !== userId) {
-    return res.status(403).send('Forbidden');
+    return res.status(403).json({ data: null, error: 'Forbidden' });
   }
 
   try {
-    const invites = await db('friend_invite')
-      .where({ receiver_iduser: userId });
+    const invites = await db('friend_invite as fi')
+      .join('user as u', 'fi.sender_iduser', 'u.iduser')
+      .select(
+        'fi.idinvite as id',
+        'fi.date',
+        'u.iduser as senderId',
+        'u.name',
+        'u.username'
+      )
+      .where('fi.receiver_iduser', userId);
 
-    res.json(invites);
+    const formatted = invites.map(invite => ({
+      id: invite.id,
+      date: invite.date,
+      sender: {
+        id: invite.senderId,
+        name: invite.name,
+        username: invite.username
+      }
+    }));
+
+    res.json({ data: formatted, error: null });
   } catch (err) {
     console.error(err);
-    res.status(500).send('Error fetching invites');
+    res.status(500).json({ data: null, error: 'Error fetching invites' });
   }
 });
 
-//Sprejmi povabilo (in ga izbriši, ter ustvari prijateljstvo)
+// Sprejmi povabilo (in ga izbriši, ter ustvari prijateljstvo)
 router.post('/:id/accept', authenticateToken, async (req, res) => {
-  const inviteId = req.params.id;
+  const inviteId = parseInt(req.params.id);
 
   try {
     const invite = await db('friend_invite').where({ idinvite: inviteId }).first();
 
-    if (!invite) return res.status(404).send('Invite not found');
+    if (!invite) {
+      return res.status(404).json({ error: 'Invite not found' });
+    }
+
     if (invite.receiver_iduser !== req.user.id) {
-      return res.status(403).send('Not your invite');
+      return res.status(403).json({ error: 'Not your invite' });
     }
 
     await db.transaction(async trx => {
@@ -65,31 +86,37 @@ router.post('/:id/accept', authenticateToken, async (req, res) => {
       await trx('friend_invite').where({ idinvite: inviteId }).delete();
     });
 
-    res.send('Invite accepted and friendship created');
+    res.json({ error: null });
   } catch (err) {
     console.error(err);
-    res.status(500).send('Error accepting invite');
+    res.status(500).json({ error: 'Error accepting invite' });
   }
 });
 
-//Zavrni (izbriši) povabilo
+
+// Zavrni (izbriši) povabilo
 router.delete('/:id', authenticateToken, async (req, res) => {
-  const inviteId = req.params.id;
+  const inviteId = parseInt(req.params.id);
 
   try {
     const invite = await db('friend_invite').where({ idinvite: inviteId }).first();
 
-    if (!invite) return res.status(404).send('Invite not found');
+    if (!invite) {
+      return res.status(404).json({ error: 'Invite not found' });
+    }
+
     if (invite.receiver_iduser !== req.user.id && invite.sender_iduser !== req.user.id) {
-      return res.status(403).send('Not authorized to delete this invite');
+      return res.status(403).json({ error: 'Not authorized to delete this invite' });
     }
 
     await db('friend_invite').where({ idinvite: inviteId }).delete();
-    res.send('Invite deleted');
+
+    res.json({ error: null });
   } catch (err) {
     console.error(err);
-    res.status(500).send('Error deleting invite');
+    res.status(500).json({ error: 'Error deleting invite' });
   }
 });
+
 
 module.exports = router;

@@ -12,14 +12,19 @@ router.get('/get-friends', authenticateToken, async (req, res) => {
     const friends = await db('friendship')
       .join('user', 'user.iduser', 'friendship.friend_iduser')
       .where('friendship.user_iduser', userId)
-      .select('user.iduser', 'user.username'); 
+      .select(
+        'user.iduser as id',
+        'user.name',
+        'user.username'
+      );
 
-    res.json(friends);
+    res.json({ friends, error: null });
   } catch (err) {
     console.error(err);
-    res.status(500).send('Error fetching friends');
+    res.status(500).json({ friends: [], error: 'Error fetching friends' });
   }
 });
+
 
 // GET /friends/get-friend-data?friendId=123
 router.get('/get-friend-data', authenticateToken, async (req, res) => {
@@ -58,7 +63,7 @@ router.delete('/delete-friendship', authenticateToken, async (req, res) => {
   const friendId = parseInt(req.query.friendId);
 
   if (!friendId) {
-    return res.status(400).send('Missing friendId');
+    return res.status(400).json({ error: 'Missing friendId' });
   }
 
   try {
@@ -69,11 +74,13 @@ router.delete('/delete-friendship', authenticateToken, async (req, res) => {
         .del();
     });
 
-    res.send('Friendship deleted');
+    res.json({ error: null });
   } catch (err) {
     console.error(err);
-    res.status(500).send('Error deleting friendship');
+    res.status(500).json({ error: 'Error deleting friendship' });
   }
 });
+
+
 
 module.exports = router;
