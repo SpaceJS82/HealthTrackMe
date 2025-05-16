@@ -26,24 +26,21 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-//Pridobi prejeta povabila
-router.get('/received/:userId', authenticateToken, async (req, res) => {
-  const userId = parseInt(req.params.userId);
-  if (req.user.id !== userId) {
-    return res.status(403).json({ data: null, error: 'Forbidden' });
-  }
+// Pridobi prejeta povabila
+router.get('/received', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
 
   try {
     const invites = await db('friend_invite as fi')
-      .join('user as u', 'fi.sender_iduser', 'u.iduser')
-      .select(
-        'fi.idinvite as id',
-        'fi.date',
-        'u.iduser as senderId',
-        'u.name',
-        'u.username'
-      )
-      .where('fi.receiver_iduser', userId);
+        .join('user as u', 'fi.sender_iduser', 'u.iduser')
+        .select(
+            'fi.idinvite as id',
+            'fi.date',
+            'u.iduser as senderId',
+            'u.name',
+            'u.username'
+        )
+        .where('fi.receiver_iduser', userId);
 
     const formatted = invites.map(invite => ({
       id: invite.id,
