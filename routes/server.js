@@ -104,10 +104,6 @@ router.get('/check-auth', verifyToken, (req, res) => {
 
 app.use(router);
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
 
 
 // All /profile routes are protected
@@ -119,4 +115,9 @@ app.use('/health', healthRoutes);
 app.use('/invites', inviteRoutes);
 
 module.exports = router;
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
 
