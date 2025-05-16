@@ -82,19 +82,26 @@ router.post('/register', async (req, res) => {
 });
 
 // Middleware to verify JWT token
-const verifyToken = (req, res, next) => {
-  const token = req.headers['authorization']?.split(' ')[1]; // Get token from Authorization header
-  if (!token) {
-    return res.status(403).send('Token is required');
-  }
+const verifyToken = async (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
 
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).send('Invalid or expired token');
+  if (!token) return res.sendStatus(401);
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await db("user").where({ iduser: decoded.id }).first();
+    if (!user) {
+      return res.status(403).json({ error: "User no longer exists" });
     }
-    req.user = decoded; // Attach user data to the request
-    next(); // Proceed to the next middleware or route handler
-  });
+
+    req.user = user;
+    next();
+  } catch (err) {
+    console.error("❌ Token error:", err.message);
+    return res.status(403).json({ error: "Invalid or expired token" });
+  }
 };
 
 // Route to check if the user is authenticated
