@@ -5,25 +5,42 @@ const db = require('./db');
 const { authenticateToken } = require('./auth');
 
 // GET /friends/get-friends
+const dayjs = require('dayjs');
+
 router.get('/get-friends', authenticateToken, async (req, res) => {
   const userId = req.user.id;
+  const todayStart = dayjs().startOf('day').format('YYYY-MM-DD HH:mm:ss');
+  const todayEnd = dayjs().endOf('day').format('YYYY-MM-DD HH:mm:ss');
 
   try {
-    const friends = await db('friendship')
-      .join('user', 'user.iduser', 'friendship.friend_iduser')
-      .where('friendship.user_iduser', userId)
+    const friendsWithUser = await db('user')
+      .leftJoin('health_metric', function () {
+        this.on('user.iduser', '=', 'health_metric.user_iduser')
+          .andOn('health_metric.type', '=', db.raw('?', ['sleep']))
+          .andOnBetween('health_metric.date', [todayStart, todayEnd]);
+      })
+      .where(function () {
+        this.whereIn('user.iduser', function () {
+          this.select('friend_iduser')
+            .from('friendship')
+            .where('user_iduser', userId);
+        }).orWhere('user.iduser', userId); // include yourself
+      })
       .select(
         'user.iduser as id',
         'user.name',
-        'user.username'
-      );
+        'user.username',
+        'health_metric.value as today_sleep_score'
+      )
+      .orderBy('today_sleep_score', 'desc');
 
-    res.json({ friends, error: null });
+    res.json({ friends: friendsWithUser, error: null });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ friends: [], error: 'Error fetching friends' });
+    res.status(500).json({ friends: [], error: 'Error fetching friends and sleep scores' });
   }
 });
+
 
 
 // GET /friends/get-friend-data?friendId=123
