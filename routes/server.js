@@ -45,7 +45,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign(
       { id: user.iduser, username: user.username, name: user.name },
       JWT_SECRET,
-      { expiresIn: '15m' } // Token expires in 1 hour
+      { expiresIn: '15m' } // Token expires in 15 min
     );
 
     res.status(200).json({ token }); // Send the token to the client

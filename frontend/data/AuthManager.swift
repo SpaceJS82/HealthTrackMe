@@ -193,18 +193,15 @@ class AuthManager {
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 print("❌ Network error:", error)
-                self.clearCredentials()
-                self.signOut()
-                completion(false)
+                // Don't sign out — attempt re-login instead
+                self.retryLoginIfPossible(completion: completion)
                 return
             }
 
             if let httpResponse = response as? HTTPURLResponse {
                 if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
-                    print("❌ Unauthorized or forbidden")
-                    self.clearCredentials()
-                    self.signOut()
-                    completion(false)
+                    print("❌ Unauthorized — attempting re-login")
+                    self.retryLoginIfPossible(completion: completion)
                     return
                 }
             }
@@ -212,13 +209,12 @@ class AuthManager {
             guard let data = data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let _ = json["user"] as? [String: Any] else {
-                print("❌ Token check failed: invalid JSON")
-                self.clearCredentials()
-                self.signOut()
-                completion(false)
+                print("❌ Invalid token response — trying re-login")
+                self.retryLoginIfPossible(completion: completion)
                 return
             }
 
+            // Token is valid
             completion(true)
         }.resume()
     }
@@ -462,5 +458,20 @@ class AuthManager {
         self.savedUsername = nil
         self.savedPassword = nil
         self.hasCreatedAccount = false
+    }
+
+
+    private func retryLoginIfPossible(completion: @escaping (Bool) -> Void) {
+        self.login { result in
+            switch result {
+            case .success:
+                print("✅ Token refreshed via login")
+                completion(true)
+            case .failure:
+                print("❌ Re-login failed — signing out")
+                self.signOut()
+                completion(false)
+            }
+        }
     }
 }
