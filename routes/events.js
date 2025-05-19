@@ -123,9 +123,6 @@ router.get('/get-events', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/get-event-reactions', authenticateToken);
-router.get('/react-to-event', authenticateToken);
-
 // POST /upload-event
 router.post('/upload-event', authenticateToken, async (req, res) => {
   const userId = req.user.id;
@@ -165,5 +162,157 @@ router.post('/upload-event', authenticateToken, async (req, res) => {
   }
 });
 
+
+router.get('/get-event-reactions', authenticateToken, async (req, res) => {
+  const eventId = req.query.eventId;
+
+  if (!eventId) {
+    return res.status(400).json({ error: 'Missing eventId' });
+  }
+
+  try {
+    const reactions = await db('event_reaction')
+      .where('event_idevent', eventId)
+      .join('user', 'user.iduser', '=', 'event_reaction.user_iduser')
+      .select(
+        'event_reaction.idreaction as id',
+        'event_reaction.reaction as content',
+        'user.iduser as userId',
+        'user.name',
+        'user.username'
+      );
+
+    res.json({ data: reactions, error: null });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error fetching reactions' });
+  }
+});
+
+
+
+// POST /react-to-event
+router.post('/react-to-event', authenticateToken, async (req, res) => {
+  const reactingUserId = req.user.id;
+  const { eventId, reaction } = req.body;
+
+  if (!eventId || !reaction) {
+    return res.status(400).json({ error: 'Missing eventId or reaction' });
+  }
+
+  try {
+    // Get event and its creator
+    const event = await db('event').where({ idevent: eventId }).first();
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    const eventOwnerId = event.user_iduser;
+
+    // Prevent self-reaction if needed
+    if (reactingUserId === eventOwnerId) {
+      return res.status(400).json({ error: "You can't react to your own event" });
+    }
+
+    // Check if users are mutual friends (bidirectional friendship)
+    const areFriends = await db('friendship')
+      .where(function () {
+        this.where({ user_iduser: reactingUserId, friend_iduser: eventOwnerId });
+      })
+      .orWhere(function () {
+        this.where({ user_iduser: eventOwnerId, friend_iduser: reactingUserId });
+      })
+      .first();
+
+    if (!areFriends) {
+      return res.status(403).json({ error: 'You can only react to your friends\' events' });
+    }
+
+    // Add the reaction to the event
+    const [reactionId] = await db('event_reaction').insert({
+      reaction,
+      event_idevent: eventId,
+      user_iduser: reactingUserId
+    });
+
+    // Fetch the full reaction data with user info
+    const newReaction = await db('event_reaction')
+      .join('user', 'user.iduser', '=', 'event_reaction.user_iduser')
+      .where('event_reaction.idreaction', reactionId)
+      .select(
+        'event_reaction.idreaction as id',
+        'event_reaction.reaction as content',
+        'event_reaction.event_idevent as eventId',
+        'user.iduser as userId',
+        'user.name',
+        'user.username'
+      )
+      .first();
+
+    res.status(201).json({ reaction: newReaction });
+
+  } catch (err) {
+    console.error('Error reacting to event:', err);
+    res.status(500).json({ error: 'Server error while reacting to event' });
+  }
+});
+
+
+
+// GET /get-event-reactions?eventId=123
+router.get('/get-event-reactions', authenticateToken, async (req, res) => {
+  const { eventId } = req.query;
+
+  if (!eventId) {
+    return res.status(400).json({ error: 'Missing eventId' });
+  }
+
+  try {
+    const reactions = await db('event_reaction')
+      .where('event_idevent', eventId)
+      .join('user', 'user.iduser', '=', 'event_reaction.user_iduser')
+      .select(
+        'event_reaction.idreaction as id',
+        'event_reaction.reaction as content',
+        'user.iduser as userId',
+        'user.name',
+        'user.username'
+      );
+
+    res.json({ reactions, error: null });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ reactions: [], error: 'Error fetching reactions' });
+  }
+});
+
+// DELETE /event-reaction/:id
+router.delete('/event-reaction/:id', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  const reactionId = req.params.id;
+
+  try {
+    // Find the reaction and check if it exists
+    const reaction = await db('event_reaction').where({ idreaction: reactionId }).first();
+
+    if (!reaction) {
+      return res.status(404).json({ error: 'Reaction not found' });
+    }
+
+    // Check if the authenticated user is the one who created the reaction
+    if (reaction.user_iduser !== userId) {
+      return res.status(403).json({ error: 'You can only delete your own reactions' });
+    }
+
+    // Delete the reaction
+    await db('event_reaction').where({ idreaction: reactionId }).del();
+
+    res.status(200).json({ message: 'Reaction deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting reaction:', err);
+    res.status(500).json({ error: 'Server error while deleting reaction' });
+  }
+});
 
 module.exports = router;
