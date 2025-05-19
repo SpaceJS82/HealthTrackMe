@@ -82,6 +82,94 @@ router.delete('/delete/health-metric/:date', authenticateToken, async (req, res)
   }
 });
 
+router.get('/health-metrics', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  const { type } = req.query;
+  const validTypes = ['sleep', 'fitness'];
 
+  if (type && !validTypes.includes(type)) {
+    return res.status(400).send('Invalid type. Must be sleep or fitness');
+  }
+
+  try {
+    const metrics = await db('health_metric')
+      .where({ user_iduser: userId })
+      .modify((queryBuilder) => {
+        if (type) {
+          queryBuilder.where({ type });
+        }
+      })
+      .orderBy('date', 'desc');
+
+    res.json(metrics);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error fetching health metrics');
+  }
+});
+
+// GET /friend-sleep-scores?username=friendUsername&type=sleep
+router.get('/friend-sleep-scores', authenticateToken, async (req, res) => {
+  const { username, type } = req.query;
+  const userId = req.user.id;
+
+  if (!username || !type) {
+    return res.status(400).send('Username and type are required');
+  }
+  if (type !== 'sleep') {
+    return res.status(400).send('Type must be sleep');
+  }
+
+  try {
+    // Find the friend's user ID
+    const friend = await db('user').where({ username }).first();
+    if (!friend) {
+      return res.status(404).send('User not found');
+    }
+
+    // Only check friendship if the username is not your own
+    if (friend.iduser !== userId) {
+      const isFriend = await db('friendship')
+        .where(function () {
+          this.where({ user_iduser: userId, friend_iduser: friend.iduser })
+            .orWhere({ user_iduser: friend.iduser, friend_iduser: userId });
+        })
+        .first();
+
+      if (!isFriend) {
+        return res.status(403).send('You are not friends with this user');
+      }
+    }
+
+    // Get today's date and 7 days ago
+    const today = new Date();
+    const weekAgo = new Date();
+    weekAgo.setDate(today.getDate() - 6);
+
+    // Prepare friend data (exclude password)
+    const { password, ...friendData } = friend;
+
+    // Query sleep scores for the past week and today
+    const scoresRaw = await db('health_metric')
+      .where('user_iduser', friend.iduser)
+      .andWhere('type', 'sleep')
+      .andWhere('date', '>=', weekAgo)
+      .andWhere('date', '<=', today)
+      .orderBy('date', 'desc');
+
+    // Attach friend data to each score
+    const scores = scoresRaw.map(score => ({
+      ...score,
+      user: friendData // replaces user_iduser with full user data
+    }));
+
+    res.json({
+      scores
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error fetching friend sleep scores');
+  }
+});
 
 module.exports = router;
