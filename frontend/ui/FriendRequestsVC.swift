@@ -10,23 +10,35 @@ import UIKit
 class FriendRequestsVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UIScrollViewDelegate {
     
     //Data
+    private var isRefreshing: Bool = false
     private var data: [SharingManager.FriendRequest] = []
-    
+
     //UI
     private let refreshControl = UIRefreshControl()
     private let tableView = UITableView()
-    
+    private let emptyStateLabel: UILabel = {
+        let label = UILabel()
+        label.text = "Nothing here".localized()
+        label.textColor = .secondaryText
+        label.font = .roundedFont(ofSize: 17, weight: .regular)
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        label.isHidden = true
+        return label
+    }()
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        
+
         tableView.frame = view.bounds
         tableView.contentInset.top = 30
-        
+        emptyStateLabel.frame = tableView.bounds
+
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+
         view.backgroundColor = .groupedBackground
 
         self.navigationItem.titleView = {
@@ -37,12 +49,12 @@ class FriendRequestsVC: UIViewController, UITableViewDelegate, UITableViewDataSo
             label.sizeToFit()
             return label
         }()
-        
+
         self.navigationItem.leftBarButtonItem = self.getNavigationItem(image: "chevron.backward", target: self, action: #selector(onBack), backgroundColor: .groupedSecondaryBackground)
-        
+
         self.navigationItem.rightBarButtonItem = self.getNavigationItem(image: "plus", target: self, action: #selector(onAdd), backgroundColor: .groupedSecondaryBackground)
-        
-        
+
+
         tableView.register(FriendRequestCell.self, forCellReuseIdentifier: "cell")
         tableView.delegate = self
         tableView.dataSource = self
@@ -51,45 +63,68 @@ class FriendRequestsVC: UIViewController, UITableViewDelegate, UITableViewDataSo
         tableView.allowsSelection = false
         tableView.backgroundColor = .clear
         view.addSubview(tableView)
-        
+
         refreshControl.addTarget(self, action: #selector(onRefreshControl), for: .valueChanged)
         refreshControl.tintColor = .title
         tableView.refreshControl = refreshControl
-        
-        
+
+        tableView.addSubview(emptyStateLabel)
+
         self.refresh()
-        
+
     }
-    
+
     @objc
     private func onRefreshControl() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         self.refresh()
     }
-    
+
     @objc
     private func refresh() {
-        SharingManager.shared.getFriendRequests { requests, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    SharingManager.shared.displayError(error: error, on: self) {
+        guard !self.isRefreshing else { return }
+        self.isRefreshing = true
+
+        AuthManager.shared.checkServerConnectivity { success in
+            if success {
+                SharingManager.shared.getFriendRequests { requests, error in
+                    DispatchQueue.main.async {
+                        if let error = error {
+                            SharingManager.shared.displayError(error: error, on: self) {
+                                self.refresh()
+                            }
+                        } else {
+                            self.data = requests
+                            self.tableView.reloadData()
+                        }
+
+                        self.refreshControl.endRefreshing()
+                        self.isRefreshing = false
+                    }
+                }
+            } else {
+                DispatchQueue.main.async {
+                    let alert = AlertVC(icon: UIImage(systemName: "wifi.slash"), title: "No internet connection".localized(), body: "Yoa needs access to the internet so it can ask your friends what they did today.\nTry again later.".localized(), closeIconName: "arrow.trianglehead.clockwise") { _ in
                         self.refresh()
                     }
-                } else {
-                    self.data = requests
-                    self.tableView.reloadData()
+
+                    let navigation = ThemeNavigationViewController(rootViewController: alert)
+                    navigation.modalPresentationStyle = .overCurrentContext
+                    navigation.modalTransitionStyle = .crossDissolve
+                    self.present(navigation, animated: true)
+
+                    self.refreshControl.endRefreshing()
+                    self.isRefreshing = false
                 }
-                
-                self.refreshControl.endRefreshing()
             }
         }
     }
-    
+
     @objc
     private func onBack() {
         self.navigationController?.popViewController(animated: true)
     }
-    
+
     @objc
     private func onAdd() {
         let alert = UIAlertController(title: "Add Friend".localized(), message: "By username", preferredStyle: .alert)
@@ -123,6 +158,7 @@ class FriendRequestsVC: UIViewController, UITableViewDelegate, UITableViewDataSo
 
     //TableView delegates
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        self.emptyStateLabel.isHidden = !self.data.isEmpty
         return self.data.count
     }
 

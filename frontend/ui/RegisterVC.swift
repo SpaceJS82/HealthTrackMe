@@ -142,8 +142,15 @@ class RegisterVC: UIViewController, UITextFieldDelegate {
         }
         
         AuthManager.shared.register(username: username, password: password, name: UserData.shared.fullName) { success in
-            DispatchQueue.main.async {
-                self.onBack()
+            AuthManager.shared.login(username: username, password: password) { success in
+                DispatchQueue.main.async {
+                    if success {
+                        self.sharingVC.refresh()
+                        self.dismiss(animated: true)
+                    } else {
+                        self.onBack()
+                    }
+                }
             }
         }
     }

@@ -10,7 +10,7 @@ import Foundation
 class AuthManager {
     static let shared = AuthManager()
 
-    private let baseURL = "http://localhost:3000"
+    public let baseURL = "http://localhost:3000"
     private let tokenKey = "jwtToken"
 
     private var token: String? {
@@ -22,6 +22,14 @@ class AuthManager {
                 UserDefaults.standard.removeObject(forKey: tokenKey)
             }
         }
+    }
+
+    public var isLoggedIn: Bool {
+        return token != nil && hasCreatedAccount
+    }
+
+    public func getStoredUsername() -> String? {
+        return self.savedUsername
     }
 
     private var savedUsername: String? {
@@ -66,6 +74,10 @@ class AuthManager {
             case .success(let json):
                 if let token = json["token"] as? String {
                     self.token = token
+                    if let user = json["user"] as? [String: Any],
+                       let name = user["name"] as? String {
+                        UserData.shared.fullName = name
+                    }
                     self.flushLoginQueue(with: .success(()))
                 } else {
                     self.clearCredentials()
@@ -93,6 +105,12 @@ class AuthManager {
                     self.savedUsername = username
                     self.savedPassword = password
                     self.hasCreatedAccount = true
+
+                    if let user = json["user"] as? [String: Any],
+                       let name = user["name"] as? String {
+                        UserData.shared.fullName = name
+                    }
+
                     completion(true)
                 } else {
                     completion(false)
@@ -215,6 +233,11 @@ class AuthManager {
             }
 
             // Token is valid
+            if let user = json["user"] as? [String: Any],
+               let name = user["name"] as? String {
+                UserData.shared.fullName = name
+            }
+
             completion(true)
         }.resume()
     }
@@ -468,9 +491,337 @@ class AuthManager {
                 print("✅ Token refreshed via login")
                 completion(true)
             case .failure:
-                print("❌ Re-login failed — signing out")
                 self.signOut()
                 completion(false)
+            }
+        }
+    }
+
+
+    public func checkServerConnectivity(completion: @escaping (Bool) -> Void) {
+        guard let url = URL(string: baseURL + "/check-connectivity") else {
+            completion(false)
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 5
+
+        URLSession.shared.dataTask(with: request) { _, response, error in
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                completion(true)
+            } else {
+                print("⚠️ Server unreachable:", error?.localizedDescription ?? "No response")
+                completion(false)
+            }
+        }.resume()
+    }
+
+
+    func uploadSleepScore(value: Double, date: Date, completion: @escaping (Result<Void, Error>) -> Void) {
+        ensureAuthenticated { result in
+            switch result {
+            case .success:
+                let formatter = ISO8601DateFormatter()
+                formatter.formatOptions = [.withInternetDateTime]
+
+                let body: [String: Any] = [
+                    "type": "sleep",
+                    "value": value,
+                    "date": formatter.string(from: date)
+                ]
+
+                self.postRequest(endpoint: "/health/upload-health-metric", body: body) { result in
+                    switch result {
+                    case .success:
+                        completion(.success(()))
+                    case .failure(let error):
+                        completion(.failure(error))
+                    }
+                }
+
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+
+    func deleteFriend(username: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        ensureAuthenticated { result in
+            switch result {
+            case .success:
+                // First, fetch friends to find ID
+                self.getFriends { result in
+                    switch result {
+                    case .success(let friends):
+                        guard let friend = friends.first(where: { $0["username"] as? String == username }),
+                              let friendId = friend["id"] as? Int else {
+                            completion(.failure(NSError(domain: "FriendNotFound", code: 404)))
+                            return
+                        }
+
+                        guard let url = URL(string: "\(self.baseURL)/friends/delete-friendship?friendId=\(friendId)") else {
+                            completion(.failure(NSError(domain: "BadURL", code: 400)))
+                            return
+                        }
+
+                        var request = URLRequest(url: url)
+                        request.httpMethod = "DELETE"
+                        request.setValue("Bearer \(self.token ?? "")", forHTTPHeaderField: "Authorization")
+
+                        URLSession.shared.dataTask(with: request) { _, response, error in
+                            if let error = error {
+                                completion(.failure(error))
+                                return
+                            }
+
+                            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
+                                completion(.failure(NSError(domain: "DeleteFailed", code: httpResponse.statusCode)))
+                                return
+                            }
+
+                            completion(.success(()))
+                        }.resume()
+
+                    case .failure(let error):
+                        completion(.failure(error))
+                    }
+                }
+
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    // MARK: - Profile Update Endpoints
+
+    func changeName(to newName: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        ensureAuthenticated { result in
+            switch result {
+            case .success:
+                let body = ["name": newName]
+                self.patchRequest(endpoint: "/profile/name", body: body, completion: completion)
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func changeUsername(to newUsername: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        ensureAuthenticated { result in
+            switch result {
+            case .success:
+                let body = ["username": newUsername]
+                self.patchRequest(endpoint: "/profile/username", body: body) { result in
+                    switch result {
+                    case .success:
+                        self.savedUsername = newUsername
+                        completion(.success(()))
+                    case .failure(let error):
+                        completion(.failure(error))
+                    }
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func changePassword(oldPassword: String, newPassword: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        ensureAuthenticated { result in
+            switch result {
+            case .success:
+                let body = [
+                    "oldPassword": oldPassword,
+                    "newPassword": newPassword
+                ]
+                self.patchRequest(endpoint: "/profile/password", body: body) { result in
+                    switch result {
+                    case .success:
+                        self.savedPassword = newPassword
+                        completion(.success(()))
+                    case .failure(let error):
+                        completion(.failure(error))
+                    }
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    private func patchRequest(endpoint: String, body: [String: Any], completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let url = URL(string: baseURL + endpoint) else {
+            completion(.failure(NSError(domain: "BadURL", code: 400)))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        URLSession.shared.dataTask(with: request) { _, response, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode >= 400 {
+                completion(.failure(NSError(domain: "Server", code: httpResponse.statusCode)))
+                return
+            }
+
+            completion(.success(()))
+        }.resume()
+    }
+
+    func getFriendSleepScores(for username: String, completion: @escaping (Result<[[String: Any]], Error>) -> Void) {
+        print("Fetching scores for: \(username)")
+
+        ensureAuthenticated { result in
+            switch result {
+            case .success:
+                guard let encodedUsername = username.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+                    completion(.failure(NSError(domain: "EncodingError", code: 400)))
+                    return
+                }
+
+                let endpoint = "/health/friend-sleep-scores?username=\(encodedUsername)&type=sleep"
+
+                print("➡️ Calling endpoint:", endpoint)
+
+                self.authenticatedGETWrapped(endpoint: endpoint, arrayKey: "scores", completion: completion)
+
+            case .failure(let error):
+                print("❌ Auth failed:", error)
+                completion(.failure(error))
+            }
+        }
+    }
+
+
+    func getFriendEvents(completion: @escaping (Result<[[String: Any]], Error>) -> Void) {
+        ensureAuthenticated { result in
+            switch result {
+            case .success:
+                self.authenticatedGETWrapped(endpoint: "/events/get-events", arrayKey: "data", completion: completion)
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func uploadEvent(metadata: [String: Any], type: String, completion: @escaping (Result<[String: Any], Error>) -> Void) {
+        let body: [String: Any] = ["metadata": metadata, "type": type]
+
+        ensureAuthenticated { result in
+            switch result {
+            case .success:
+                self.postRequest(endpoint: "/events/upload-event", body: body, completion: completion)
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func reactToEvent(eventId: Int, reaction: String, completion: @escaping (Result<[String: Any], Error>) -> Void) {
+        let body: [String: Any] = ["eventId": eventId, "reaction": reaction]
+
+        ensureAuthenticated { result in
+            switch result {
+            case .success:
+                self.postRequest(endpoint: "/events/react-to-event", body: body, completion: completion)
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func deleteEventReaction(reactionId: Int, completion: @escaping (Result<Void, Error>) -> Void) {
+        ensureAuthenticated { result in
+            switch result {
+            case .success:
+                guard let url = URL(string: self.baseURL + "/events/event-reaction/\(reactionId)") else {
+                    completion(.failure(NSError(domain: "BadURL", code: 400)))
+                    return
+                }
+                var request = URLRequest(url: url)
+                request.httpMethod = "DELETE"
+                if let token = self.token {
+                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                }
+                URLSession.shared.dataTask(with: request) { _, response, error in
+                    if let error = error {
+                        completion(.failure(error))
+                    } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode >= 400 {
+                        completion(.failure(NSError(domain: "Server", code: httpResponse.statusCode)))
+                    } else {
+                        completion(.success(()))
+                    }
+                }.resume()
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+
+    func getEvents(for userId: Int, completion: @escaping (Result<[[String: Any]], Error>) -> Void) {
+        ensureAuthenticated { result in
+            switch result {
+            case .success:
+                let endpoint = "/events/get-events/user/\(userId)"
+                self.authenticatedGETWrapped(endpoint: endpoint, arrayKey: "data", completion: completion)
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func getEventReactions(eventId: Int, completion: @escaping (Result<[[String: Any]], Error>) -> Void) {
+        ensureAuthenticated { result in
+            switch result {
+            case .success:
+                let endpoint = "/events/get-event-reactions?eventId=\(eventId)"
+                self.authenticatedGETWrapped(endpoint: endpoint, arrayKey: "reactions", completion: completion)
+
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func deleteEvent(eventId: Int, completion: @escaping (Result<Void, Error>) -> Void) {
+        ensureAuthenticated { result in
+            switch result {
+            case .success:
+                guard let url = URL(string: "\(self.baseURL)/events/delete/\(eventId)") else {
+                    completion(.failure(NSError(domain: "BadURL", code: 400)))
+                    return
+                }
+
+                var request = URLRequest(url: url)
+                request.httpMethod = "DELETE"
+                request.setValue("Bearer \(self.token ?? "")", forHTTPHeaderField: "Authorization")
+
+                URLSession.shared.dataTask(with: request) { _, response, error in
+                    if let error = error {
+                        completion(.failure(error))
+                    } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode >= 400 {
+                        completion(.failure(NSError(domain: "Server", code: httpResponse.statusCode)))
+                    } else {
+                        completion(.success(()))
+                    }
+                }.resume()
+
+            case .failure(let error):
+                completion(.failure(error))
             }
         }
     }

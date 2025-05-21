@@ -13,7 +13,7 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
     //Data
     private var isFirstRefresh: Bool = true
     private var isRefreshing: Bool = false
-    private var data: [SharingManager.PersonData] = []
+    fileprivate var data: [SharingManager.PersonData] = []
 
     //UI
     private let indicatorVC = ActivityIndicatorVC()
@@ -32,13 +32,6 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
 
-        if self.isFirstRefresh {
-            self.present(self.indicatorVC, animated: false) {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
-                    self.indicatorVC.dismiss(animated: true)
-                }
-            }
-        }
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -139,55 +132,88 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
         guard !self.isRefreshing else { return }
         self.isRefreshing = true
 
-        let dispatchGroup = DispatchGroup()
-
-        dispatchGroup.enter()
-        SharingManager.shared.getEventData { data, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    SharingManager.shared.displayError(error: error, on: self) {
-                        self.refresh()
-                    }
-                } else {
-                    self.headerView.refresh(with: data)
+        if self.isFirstRefresh {
+            self.present(self.indicatorVC, animated: false) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+                    self.indicatorVC.dismiss(animated: true)
                 }
             }
-            dispatchGroup.leave()
         }
 
-        dispatchGroup.enter()
-        SharingManager.shared.getPersonData { data, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    SharingManager.shared.displayError(error: error, on: self) {
-                        self.refresh()
-                    }
-                } else {
-                    self.data = data.sorted(by: {
-                        if $0.sleepScore == $1.sleepScore {
-                            return $0.sleepScore < $1.sleepScore
+        AuthManager.shared.checkServerConnectivity { success in
+            if success {
+                let dispatchGroup = DispatchGroup()
+
+                dispatchGroup.enter()
+                SharingManager.shared.getEventData { data, error in
+                    DispatchQueue.main.async {
+                        if let error = error {
+                            SharingManager.shared.displayError(error: error, on: self) {
+                                self.refresh()
+                            }
                         } else {
-                            return $0.name < $1.name
+                            self.headerView.refresh(with: data.sorted(by: {$0.date > $1.date}))
                         }
-                    })
-                    self.tableView.reloadData()
+                    }
+                    dispatchGroup.leave()
                 }
+
+                dispatchGroup.enter()
+                SharingManager.shared.getPersonData { data, error in
+                    DispatchQueue.main.async {
+                        if let error = error {
+                            SharingManager.shared.displayError(error: error, on: self) {
+                                self.refresh()
+                            }
+                        } else {
+                            self.data = data.sorted(by: {
+                                let score0 = $0.sleepScore ?? 0
+                                let score1 = $1.sleepScore ?? 0
+
+                                if score0 == score1 {
+                                    return $0.name < $1.name
+                                } else {
+                                    return score0 > score1
+                                }
+                            })
+                            self.tableView.reloadData()
+                        }
+                    }
+                    dispatchGroup.leave()
+                }
+
+                dispatchGroup.notify(queue: .main) {
+                    self.refreshControl.endRefreshing()
+                    self.isRefreshing = false
+                    self.isFirstRefresh = false
+
+                    self.navigationItem.rightBarButtonItem = AuthManager.shared.willAutoLogin ? self.navigationButton : nil
+
+                    self.tableView.isHidden = !AuthManager.shared.willAutoLogin
+                    self.setUpButton.isHidden = AuthManager.shared.willAutoLogin
+                    self.setUpExplanationView.isHidden = AuthManager.shared.willAutoLogin
+
+                    self.indicatorVC.dismiss(animated: true)
+                }
+            } else {
+                DispatchQueue.main.async {
+                    let alert = AlertVC(icon: UIImage(systemName: "wifi.slash"), title: "No internet connection".localized(), body: "Yoa needs access to the internet so it can ask your friends what they did today.\nTry again later.".localized(), closeIconName: "arrow.trianglehead.clockwise") { _ in
+                        self.refresh()
+                    }
+
+                    self.indicatorVC.dismiss(animated: true)
+
+                    let navigation = ThemeNavigationViewController(rootViewController: alert)
+                    navigation.modalPresentationStyle = .overCurrentContext
+                    navigation.modalTransitionStyle = .crossDissolve
+                    self.present(navigation, animated: true)
+
+                    self.refreshControl.endRefreshing()
+                    self.isRefreshing = false
+                    self.isFirstRefresh = false
+                }
+
             }
-            dispatchGroup.leave()
-        }
-
-        dispatchGroup.notify(queue: .main) {
-            self.refreshControl.endRefreshing()
-            self.isRefreshing = false
-            self.isFirstRefresh = false
-
-            self.navigationItem.rightBarButtonItem = AuthManager.shared.willAutoLogin ? self.navigationButton : nil
-
-            self.tableView.isHidden = !AuthManager.shared.willAutoLogin
-            self.setUpButton.isHidden = AuthManager.shared.willAutoLogin
-            self.setUpExplanationView.isHidden = AuthManager.shared.willAutoLogin
-
-            self.indicatorVC.dismiss(animated: true)
         }
 
     }
@@ -240,6 +266,7 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
 
         private let highlightsLabel = UILabel()
         private let eventsStack = MyHStack()
+        private let emptyLabel = UILabel()
 
         private let frendsTitle = UILabel()
 
@@ -250,6 +277,7 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
 
             highlightsLabel.frame = CGRect(x: 15, y: titleView.frame.maxY + 30, width: self.frame.width - 30, height: 40)
             eventsStack.frame = CGRect(x: 0, y: highlightsLabel.frame.maxY + 2, width: self.frame.width, height: 288)
+            emptyLabel.frame = eventsStack.frame
 
             frendsTitle.frame = CGRect(x: 15, y: eventsStack.frame.maxY + 30, width: self.frame.width - 30, height: 40)
 
@@ -272,6 +300,13 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
 
             self.addSubview(eventsStack)
 
+            emptyLabel.text = "No event shared with you yet".localized()
+            emptyLabel.textColor = .secondaryText
+            emptyLabel.textAlignment = .center
+            emptyLabel.font = .roundedFont(ofSize: 17, weight: .regular)
+            emptyLabel.numberOfLines = 0
+            self.addSubview(emptyLabel)
+
             frendsTitle.text = "Friends".localized()
             frendsTitle.font = UIFont.roundedFont(ofSize: 17, weight: .semibold)
             frendsTitle.textColor = .title
@@ -283,17 +318,19 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
         public func refresh(with: [SharingManager.EventData]) {
             self.data = with
             self.eventsStack.setViews(self.data.enumerated().map({ index, data in
-                return EventCell(data: data)
+                return EventCell(data: data, header: self)
                     .size(CGSize(width: 283))
                     .padding(UIEdgeInsets(left: (index == 0) ? 15 : 0,
                                           right: (index == self.data.count - 1) ? 15 : 2))
             }))
+            self.emptyLabel.isHidden = !self.data.isEmpty
         }
 
-        private class EventCell: MyStack.StackView {
+        private class EventCell: MyStack.StackView, UIContextMenuInteractionDelegate, EmojiSelectorVCDelegate {
 
             //Data
             private var data: SharingManager.EventData?
+            private var header: SharingHeader!
 
             //UI
             private let backView = UIView()
@@ -307,39 +344,15 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
             private let titleView = UILabel()
             private let subTitleView = UILabel()
 
-            convenience init(data: SharingManager.EventData) {
+            private let leftReactionBadge = UILabel()
+            private let rightReactionBadge = UILabel()
+
+            convenience init(data: SharingManager.EventData, header: SharingHeader) {
                 self.init()
                 self.data = data
+                self.header = header
 
-                self.timeLabel.text = Date.now.timeIntervalSince(data.date).howMuchTimeAgoDescription
-
-                if data.type == .workout {
-                    self.messageView.text = "_NAME_ finished a workout".localized().replacingOccurrences(of: "_NAME_", with: data.user?.name ?? "Unknown")
-
-                    if let iconName = data.metaData?["icon"] as? String {
-                        self.imageView.image = UIImage(systemName: iconName)
-                    }
-
-                    if let metric = data.metaData?["metric"] as? String {
-                        self.titleView.text = metric
-                    }
-
-                    if let workoutType = data.metaData?["workoutType"] as? Int, let isIndoor = data.metaData?["isIndoor"] as? Bool {
-                        let activityType = HKWorkoutActivityType(rawValue: UInt(workoutType)) ?? .barre
-
-                        let workout = HKWorkout(activityType: activityType,
-                                                start: .now,
-                                                end: .now,
-                                                duration: 0,
-                                                totalEnergyBurned: HKQuantity(unit: .kilocalorie(), doubleValue: 0),
-                                                totalDistance: HKQuantity(unit: .mile(), doubleValue: 0),
-                                                metadata: [
-                                                    HKMetadataKeyIndoorWorkout : isIndoor.hashValue
-                                                ])
-
-                        self.subTitleView.text = workout.getWorkoutTitle()
-                    }
-                }
+                self.refresh(with: data)
 
             }
 
@@ -360,6 +373,16 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
                 titleView.frame = CGRect(x: 30, y: imageBackground.frame.maxY + 20, width: backView.frame.width - 60, height: 25)
                 subTitleView.frame = CGRect(x: 30, y: titleView.frame.maxY, width: backView.frame.width - 60, height: 25)
 
+                leftReactionBadge.frame = CGRect(x: self.frame.width - 35, y: 0, width: 35, height: 35)
+                leftReactionBadge.layer.cornerRadius = 35 / 2
+                leftReactionBadge.layer.borderWidth = 2
+                leftReactionBadge.layer.borderColor = UIColor.groupedBackground.cgColor
+
+                rightReactionBadge.frame = CGRect(x: self.frame.width - 60, y: 0, width: 35, height: 35)
+                rightReactionBadge.layer.cornerRadius = 35 / 2
+                rightReactionBadge.layer.borderWidth = 2
+                rightReactionBadge.layer.borderColor = UIColor.groupedBackground.cgColor
+
             }
 
             override init(frame: CGRect) {
@@ -373,33 +396,202 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
                 messageView.textColor = .title
                 messageView.adjustsFontSizeToFitWidth = true
                 messageView.font = .roundedFont(ofSize: 17, weight: .semibold)
-                self.addSubview(messageView)
+                backView.addSubview(messageView)
 
                 timeLabel.textAlignment = .left
                 timeLabel.textColor = .secondaryText
                 timeLabel.adjustsFontSizeToFitWidth = true
                 timeLabel.font = .roundedFont(ofSize: 10, weight: .regular)
-                self.addSubview(timeLabel)
+                backView.addSubview(timeLabel)
 
                 imageBackground.backgroundColor = .groupedBackground
-                self.addSubview(imageBackground)
+                backView.addSubview(imageBackground)
 
                 imageView.contentMode = .scaleAspectFit
-                imageView.tintColor = .customGreen
                 imageBackground.addSubview(imageView)
 
                 titleView.textAlignment = .center
                 titleView.textColor = .customGreen
                 titleView.adjustsFontSizeToFitWidth = true
                 titleView.font = .roundedFont(ofSize: 20, weight: .semibold)
-                self.addSubview(titleView)
+                backView.addSubview(titleView)
 
                 subTitleView.textAlignment = .center
                 subTitleView.textColor = .title
                 subTitleView.adjustsFontSizeToFitWidth = true
                 subTitleView.font = .roundedFont(ofSize: 17, weight: .semibold)
-                self.addSubview(subTitleView)
+                backView.addSubview(subTitleView)
 
+                leftReactionBadge.textColor = .title
+                leftReactionBadge.textAlignment = .center
+                leftReactionBadge.font = .roundedFont(ofSize: 14, weight: .semibold)
+                leftReactionBadge.adjustsFontSizeToFitWidth = true
+                leftReactionBadge.backgroundColor = .groupedSecondaryBackground
+                leftReactionBadge.clipsToBounds = true
+                self.addSubview(leftReactionBadge)
+
+                rightReactionBadge.textColor = .title
+                rightReactionBadge.textAlignment = .center
+                rightReactionBadge.font = .roundedFont(ofSize: 14, weight: .semibold)
+                rightReactionBadge.adjustsFontSizeToFitWidth = true
+                rightReactionBadge.backgroundColor = .groupedSecondaryBackground
+                rightReactionBadge.clipsToBounds = true
+                self.addSubview(rightReactionBadge)
+
+                let interaction = UIContextMenuInteraction(delegate: self)
+                backView.addInteraction(interaction)
+
+            }
+
+            public func refresh(with data: SharingManager.EventData) {
+                self.data = data
+                self.timeLabel.text = Date.now.timeIntervalSince(data.date).howMuchTimeAgoDescription
+
+                if data.reactions.isEmpty {
+                    self.leftReactionBadge.isHidden = true
+                    self.rightReactionBadge.isHidden = true
+                } else if data.reactions.count == 1 {
+                    self.leftReactionBadge.isHidden = false
+                    self.leftReactionBadge.text = data.reactions.last?.content
+                    self.rightReactionBadge.isHidden = true
+                } else {
+                    self.leftReactionBadge.isHidden = false
+                    self.leftReactionBadge.text = data.reactions.last?.content
+                    self.rightReactionBadge.isHidden = false
+                    self.leftReactionBadge.text = String(data.reactions.count - 1) + "+"
+                }
+
+                if data.type == .workout {
+                    self.messageView.text = "_NAME_ finished a workout".localized().replacingOccurrences(of: "_NAME_", with: data.user?.name ?? "Unknown")
+
+                    self.imageView.image = data.getIcon()
+                    self.imageView.tintColor = .customGreen
+
+                    self.titleView.text = data.getMainText()
+
+                    if let workout = data.getWorkout() {
+                        self.subTitleView.text = workout.getWorkoutTitle()
+                    }
+                } else if data.type == .healthAchievement {
+                    let healthType = data.metaData?["metricType"] as? String ?? "sleep"
+                    if healthType == "sleep" {
+                        self.messageView.text = "_NAME_ shared their sleep quality".localized().replacingOccurrences(of: "_NAME_", with: data.user?.name ?? "Unknown")
+                        self.imageView.tintColor = .customPurple
+                        self.titleView.textColor = .customPurple
+                    } else if healthType == "stress" {
+                        self.messageView.text = "_NAME_ shared their stress score".localized().replacingOccurrences(of: "_NAME_", with: data.user?.name ?? "Unknown")
+                        self.imageView.tintColor = .customBlue
+                        self.titleView.textColor = .customBlue
+                    }
+
+                    self.titleView.text = data.getMainText()
+
+                    self.imageView.image = data.getIcon()
+
+                    let formatter = DateFormatter()
+                    formatter.dateFormat = "EEEE"
+                    self.subTitleView.text = formatter.string(from: data.date)
+                }
+            }
+
+            func contextMenuInteraction(_ interaction: UIContextMenuInteraction, configurationForMenuAtLocation location: CGPoint) -> UIContextMenuConfiguration? {
+
+                guard let vc = self.viewController as? SharingVC,
+                      let data = self.data else {
+                    return nil
+                }
+
+                return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { _ in
+
+                    let reactToEvent = UIAction(title: "React".localized(), image: UIImage(systemName: "star")) { _ in
+                        if let viewController = self.viewController {
+                            let emojiPicker = EmojiSelectorVC()
+                            emojiPicker.delegate = self
+                            viewController.present(ThemeNavigationViewController(rootViewController: emojiPicker), animated: true)
+                        }
+                    }
+
+                    let removeReaction = UIAction(title: "Remove reaction".localized(), image: UIImage(systemName: "star.slash"), attributes: .destructive) { _ in
+                        if let reactionId = data.reactions.filter({$0.user.isMe}).first?.id {
+                            SharingManager.shared.deleteReaction(id: reactionId) { success in
+                                DispatchQueue.main.async {
+                                    if success {
+                                        data.reactions.removeAll(where: {$0.user.isMe})
+                                        self.refresh(with: data)
+                                    } else {
+                                        SharingManager.shared.displayError(error: .unknown, on: vc)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    let hideAction = UIAction(title: "Hide from friends".localized(), image: UIImage(systemName: "eye.slash"), attributes: .destructive) { _ in
+                        let alert = UIAlertController(title: "Hide?".localized(), message: "Are you sure you want to hide this event?", preferredStyle: .alert)
+
+                        alert.addAction(UIAlertAction(title: "Hide".localized(), style: .destructive, handler: { _ in
+                            SharingManager.shared.deleteEvent(id: data.id) { success in
+                                DispatchQueue.main.async {
+                                    if success {
+                                        self.header.data.removeAll(where: {$0.id == data.id})
+                                        self.header.refresh(with: self.header.data)
+                                    } else {
+                                        SharingManager.shared.displayError(error: .unknown, on: vc)
+                                    }
+                                }
+                            }
+                        }))
+
+                        alert.addAction(UIAlertAction(title: "Cancel".localized(), style: .cancel))
+
+                        alert.view.tintColor = .customBlue
+
+                        vc.present(alert, animated: true)
+                    }
+
+                    if let user = self.data?.user {
+                        if user.isMe {
+                            return UIMenu(children: [
+                                hideAction
+                            ])
+                        } else {
+                            if data.reactions.filter({$0.user.isMe}).isEmpty {
+                                return UIMenu(children: [
+                                    reactToEvent
+                                ])
+                            } else {
+                                reactToEvent.title = "Change reaction".localized()
+                                return UIMenu(children: [
+                                    reactToEvent,
+                                    removeReaction
+                                ])
+                            }
+                        }
+                    } else {
+                        return nil
+                    }
+                }
+            }
+
+            func didSelectEmoji(emoji: String) {
+
+                guard let sharingVC = self.viewController as? SharingVC else { return }
+
+                if let event = self.data {
+                    SharingManager.shared.reactToEvent(event: event, reaction: emoji) { newReaction in
+                        DispatchQueue.main.async {
+                            if let reaction = newReaction {
+                                event.reactions.removeAll(where: {$0.user.isMe})
+                                event.reactions.insert(reaction, at: 0)
+                                self.refresh(with: event)
+                            } else {
+                                SharingManager.shared.displayError(error: .unknown, on: sharingVC)
+                            }
+                        }
+                    }
+                } else {
+                    SharingManager.shared.displayError(error: .unknown, on: sharingVC)
+                }
             }
 
             required init?(coder: NSCoder) {
@@ -485,14 +677,21 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
         public func refresh(with: SharingManager.PersonData) {
             self.data = with
 
-            if let initial = data?.name.first {
+            if let initial = data?.name.first, !with.isMe {
                 self.iconView.text = String(initial)
+            } else {
+                self.iconView.text = "🍊"
             }
 
-            self.nameLabel.text = data?.name
+            self.nameLabel.text = with.isMe ? "Me".localized() : data?.name
 
             let firstPart = "Sleep".localized()
-            let secondPart = "\(Int((data?.sleepScore ?? 0) * 100))/100"
+            var secondPart = ""
+            if let score = with.sleepScore {
+                secondPart = "\(Int((score) * 100))/100"
+            } else {
+                secondPart = "--"
+            }
 
             let attributedText = NSMutableAttributedString(
                 string: firstPart + " ",
@@ -527,7 +726,18 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
                     let alert = UIAlertController(title: "Remove friend?".localized(), message: "Are you sure you want to remove this friend, you cann't undo this.", preferredStyle: .alert)
 
                     alert.addAction(UIAlertAction(title: "Remove".localized(), style: .destructive, handler: { _ in
-                        //Remove
+                        SharingManager.shared.removeFriend(username: data.username) { error in
+                            DispatchQueue.main.async {
+                                if let error = error {
+                                    SharingManager.shared.displayError(error: error, on: self.viewController!)
+                                } else {
+                                    if let vc = self.viewController as? SharingVC {
+                                        vc.data.removeAll(where: {$0.username == data.username})
+                                        vc.tableView.reloadData()
+                                    }
+                                }
+                            }
+                        }
                     }))
 
                     alert.addAction(UIAlertAction(title: "Cancel".localized(), style: .cancel))
@@ -537,29 +747,37 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
                     self.viewController?.present(alert, animated: true)
                 }
 
-                return UIMenu(children: [copyUsernameAction, removeAction])
+                var actions: [UIMenuElement] = [copyUsernameAction]
+                if !data.isMe {
+                    actions.append(removeAction)
+                }
+
+                return UIMenu(children: actions)
             }
         }
-        
+
         required init?(coder: NSCoder) {
             fatalError("init(coder:) has not been implemented")
         }
-        
+
     }
 
 }
 
 
-extension TimeInterval {
+fileprivate extension TimeInterval {
     var howMuchTimeAgoDescription: String {
-        if self < 60 {
+        if abs(self) < 60 {
             return "Now".localized()
-        } else if self < 3600 {
+        } else if abs(self) < 3600 {
             let minutes = Int(self / 60)
-            return "\(minutes) min"
-        } else {
+            return "\(minutes)min"
+        } else  if abs(self) < 3600 * 24 {
             let hours = Int(self / 3600)
-            return "\(hours) h"
+            return "\(hours)h ago"
+        } else {
+            let days = Int(self / (3600 * 24))
+            return "\(days)\("d ago".localized())"
         }
     }
 }
