@@ -7,39 +7,34 @@ router.post('/upload-health-metric', authenticateToken, async (req, res) => {
   const userId = req.user.id;
   const { type, value, date } = req.body;
 
-  if (!type || !value || !date) {
-    return res.status(400).send('Missing fields: type, value, or date');
+  if (!type || value === undefined || value === null || !date) {
+    return res.status(400).json({ error: 'Missing fields: type, value, or date' });
   }
 
-  if (!['sleep', 'fitness'].includes(type)) {
-    return res.status(400).send('Invalid type. Must be sleep or fitness');
+  if (!['sleep', 'fitness', 'stress'].includes(type)) {
+    return res.status(400).json({ error: 'Invalid type. Must be sleep, fitness or stress' });
   }
 
   const inputDate = new Date(date);
-  const isoDate = inputDate.toISOString().split('T')[0]; // YYYY-MM-DD
+  const isoDate = inputDate.toISOString().split('T')[0];
 
   try {
-    const existing = await db('health_metric')
-      .whereRaw('DATE(`date`) = ? AND `type` = ? AND `user_iduser` = ?', [isoDate, type, userId])
-      .first();
+    await db('health_metric')
+        .whereRaw('DATE(`date`) = ? AND `type` = ? AND `user_iduser` = ?', [isoDate, type, userId])
+        .del();
 
-    if (existing) {
-      await db('health_metric')
-        .where({ idmetric: existing.idmetric })
-        .update({ value, date: inputDate });
-      res.send('Health metric updated');
-    } else {
-      await db('health_metric').insert({
-        date: inputDate,
-        value,
-        type,
-        user_iduser: userId
-      });
-      res.status(201).send('Health metric uploaded');
-    }
+    await db('health_metric').insert({
+      date: inputDate,
+      value,
+      type,
+      user_iduser: userId
+    });
+
+    res.status(201).json({ message: 'Health metric uploaded' });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Error uploading or updating health metric');
+    console.error('❌ Error uploading health metric:', err);
+    res.status(500).json({ error: 'Server error during health metric upload' });
   }
 });
 
@@ -116,58 +111,76 @@ router.get('/friend-sleep-scores', authenticateToken, async (req, res) => {
   if (!username || !type) {
     return res.status(400).send('Username and type are required');
   }
+
   if (type !== 'sleep') {
     return res.status(400).send('Type must be sleep');
   }
 
   try {
-    // Find the friend's user ID
     const friend = await db('user').where({ username }).first();
     if (!friend) {
       return res.status(404).send('User not found');
     }
 
-    // Only check friendship if the username is not your own
     if (friend.iduser !== userId) {
       const isFriend = await db('friendship')
-        .where(function () {
-          this.where({ user_iduser: userId, friend_iduser: friend.iduser })
-            .orWhere({ user_iduser: friend.iduser, friend_iduser: userId });
-        })
-        .first();
+          .where(function () {
+            this.where({ user_iduser: userId, friend_iduser: friend.iduser })
+                .orWhere({ user_iduser: friend.iduser, friend_iduser: userId });
+          })
+          .first();
 
       if (!isFriend) {
         return res.status(403).send('You are not friends with this user');
       }
     }
 
-    // Get today's date and 7 days ago
     const today = new Date();
-    const weekAgo = new Date();
-    weekAgo.setDate(today.getDate() - 6);
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+    today.setHours(23, 59, 59, 999);
+    startDate.setDate(today.getDate() - 6); // last 7 days including today
 
-    // Prepare friend data (exclude password)
+    const scoresRaw = await db('health_metric')
+        .select(
+            db.raw('DATE(date) as day'),
+            db.raw('MAX(value) as value')
+        )
+        .where('user_iduser', friend.iduser)
+        .andWhere('type', 'sleep')
+        .andWhere('date', '>=', startDate)
+        .andWhere('date', '<=', today)
+        .groupByRaw('DATE(date)')
+        .orderBy('day', 'asc');
+
+    const scoreMap = {};
+    for (const entry of scoresRaw) {
+      const dateKey = new Date(entry.day).toISOString().split('T')[0];
+      scoreMap[dateKey] = {
+        value: entry.value,
+        date: new Date(entry.day)
+      };
+    }
+
     const { password, ...friendData } = friend;
 
-    // Query sleep scores for the past week and today
-    const scoresRaw = await db('health_metric')
-      .where('user_iduser', friend.iduser)
-      .andWhere('type', 'sleep')
-      .andWhere('date', '>=', weekAgo)
-      .andWhere('date', '<=', today)
-      .orderBy('date', 'desc');
+    const scores = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      const iso = date.toISOString().split('T')[0];
 
-    // Attach friend data to each score
-    const scores = scoresRaw.map(score => ({
-      ...score,
-      user: friendData // replaces user_iduser with full user data
-    }));
+      scores.push({
+        date: date.toISOString(),
+        value: scoreMap[iso]?.value ?? 0,
+        type: 'sleep',
+        user: friendData
+      });
+    }
 
-    res.json({
-      scores
-    });
+    res.json({ scores });
   } catch (err) {
-    console.error(err);
+    console.error('Error in /friend-sleep-scores:', err);
     res.status(500).send('Error fetching friend sleep scores');
   }
 });

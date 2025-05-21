@@ -10,70 +10,65 @@ const db = require('./db');
 router.get('/get-events', authenticateToken, async (req, res) => {
   const userId = req.user.id;
 
-  // Define date 2 days ago from today
   const threeDaysAgo = dayjs().subtract(2, 'day').startOf('day').toISOString();
   const today = dayjs().endOf('day').toISOString();
-
 
   try {
     // Get friend IDs
     const friendsIdsRaw = await db('friendship')
-      .where({ user_iduser: userId })
-      .pluck('friend_iduser');
+        .where({ user_iduser: userId })
+        .pluck('friend_iduser');
 
-    const friendIds = [...new Set(friendsIdsRaw)];
+    // Include current user's own ID
+    const relevantUserIds = [...new Set([...friendsIdsRaw, userId])];
 
-    if (friendIds.length === 0) {
-      return res.json({ data: [], error: null });
-    }
-
-    // Get recent events from friends
+    // Get recent events from self + friends
     const events = await db('event')
-      .whereIn('user_iduser', friendIds)
-      .andWhere('event.date', '>=', threeDaysAgo)
-      .join('user', 'user.iduser', '=', 'event.user_iduser')
-      .select(
-        'event.idevent as id',
-        'event.date',
-        'event.type',
-        'event.metadata',
-        'user.iduser as userId',
-        'user.name as userName',
-        'user.username as userUsername'
-      );
+        .whereIn('user_iduser', relevantUserIds)
+        .andWhere('event.date', '>=', threeDaysAgo)
+        .join('user', 'user.iduser', '=', 'event.user_iduser')
+        .select(
+            'event.idevent as id',
+            'event.date',
+            'event.type',
+            'event.metadata',
+            'user.iduser as userId',
+            'user.name as userName',
+            'user.username as userUsername'
+        );
 
     // Get reactions
     const reactions = await db('event_reaction')
-      .join('user', 'user.iduser', '=', 'event_reaction.user_iduser')
-      .select(
-        'event_reaction.idreaction as id',
-        'event_reaction.reaction as content',
-        'event_reaction.event_idevent as eventId',
-        'user.iduser as userId',
-        'user.name',
-        'user.username'
-      );
+        .join('user', 'user.iduser', '=', 'event_reaction.user_iduser')
+        .select(
+            'event_reaction.idreaction as id',
+            'event_reaction.reaction as content',
+            'event_reaction.event_idevent as eventId',
+            'user.iduser as userId',
+            'user.name',
+            'user.username'
+        );
 
-    // Get sleep scores and workout counts for all users
+    // Get health stats
     const healthStats = await db('user')
-      .leftJoin('health_metric', function () {
-        this.on('user.iduser', '=', 'health_metric.user_iduser')
-          .andOn('health_metric.type', '=', db.raw('?', ['sleep']))
-          .andOn('health_metric.date', '>=', db.raw('?', [threeDaysAgo]))
-          .andOn('health_metric.date', '<=', db.raw('?', [today]));
-      })
-      .leftJoin('event', function () {
-        this.on('user.iduser', '=', 'event.user_iduser')
-          .andOn('event.type', '=', db.raw('?', ['workout']))
-          .andOn('event.date', '>=', db.raw('?', [threeDaysAgo]))
-          .andOn('event.date', '<=', db.raw('?', [today]));
-      })
-      .groupBy('user.iduser')
-      .select(
-        'user.iduser',
-        db.raw('MAX(health_metric.value) as sleepScore'),
-        db.raw('COUNT(DISTINCT event.idevent) as numberOfWorkout')
-      );
+        .leftJoin('health_metric', function () {
+          this.on('user.iduser', '=', 'health_metric.user_iduser')
+              .andOn('health_metric.type', '=', db.raw('?', ['sleep']))
+              .andOn('health_metric.date', '>=', db.raw('?', [threeDaysAgo]))
+              .andOn('health_metric.date', '<=', db.raw('?', [today]));
+        })
+        .leftJoin('event', function () {
+          this.on('user.iduser', '=', 'event.user_iduser')
+              .andOn('event.type', '=', db.raw('?', ['workout']))
+              .andOn('event.date', '>=', db.raw('?', [threeDaysAgo]))
+              .andOn('event.date', '<=', db.raw('?', [today]));
+        })
+        .groupBy('user.iduser')
+        .select(
+            'user.iduser',
+            db.raw('MAX(health_metric.value) as sleepScore'),
+            db.raw('COUNT(DISTINCT event.idevent) as numberOfWorkout')
+        );
 
     const userStatsMap = {};
     healthStats.forEach(stat => {
@@ -83,22 +78,21 @@ router.get('/get-events', authenticateToken, async (req, res) => {
       };
     });
 
-    // Build event objects
+    // Build final event objects
     const result = events.map(ev => {
       const userStats = userStatsMap[ev.userId] || {};
-
       const eventReactions = reactions
-        .filter(r => r.eventId === ev.id)
-        .map(r => ({
-          id: r.id,
-          content: r.content,
-          user: {
-            id: r.userId,
-            name: r.name,
-            username: r.username,
-            ...userStatsMap[r.userId]
-          }
-        }));
+          .filter(r => r.eventId === ev.id)
+          .map(r => ({
+            id: r.id,
+            content: r.content,
+            user: {
+              id: r.userId,
+              name: r.name,
+              username: r.username,
+              ...userStatsMap[r.userId]
+            }
+          }));
 
       return {
         id: ev.id,
@@ -116,7 +110,6 @@ router.get('/get-events', authenticateToken, async (req, res) => {
     });
 
     res.json({ data: result, error: null });
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ data: [], error: 'Error fetching events' });
@@ -201,7 +194,6 @@ router.post('/react-to-event', authenticateToken, async (req, res) => {
   }
 
   try {
-    // Get event and its creator
     const event = await db('event').where({ idevent: eventId }).first();
 
     if (!event) {
@@ -210,47 +202,60 @@ router.post('/react-to-event', authenticateToken, async (req, res) => {
 
     const eventOwnerId = event.user_iduser;
 
-    // Prevent self-reaction if needed
     if (reactingUserId === eventOwnerId) {
       return res.status(400).json({ error: "You can't react to your own event" });
     }
 
-    // Check if users are mutual friends (bidirectional friendship)
     const areFriends = await db('friendship')
-      .where(function () {
-        this.where({ user_iduser: reactingUserId, friend_iduser: eventOwnerId });
-      })
-      .orWhere(function () {
-        this.where({ user_iduser: eventOwnerId, friend_iduser: reactingUserId });
-      })
-      .first();
+        .where(function () {
+          this.where({ user_iduser: reactingUserId, friend_iduser: eventOwnerId });
+        })
+        .orWhere(function () {
+          this.where({ user_iduser: eventOwnerId, friend_iduser: reactingUserId });
+        })
+        .first();
 
     if (!areFriends) {
       return res.status(403).json({ error: 'You can only react to your friends\' events' });
     }
 
-    // Add the reaction to the event
+    // ✅ Delete any existing reaction from this user on this event
+    await db('event_reaction')
+        .where({ user_iduser: reactingUserId, event_idevent: eventId })
+        .delete();
+
+    // ✅ Insert new reaction
     const [reactionId] = await db('event_reaction').insert({
       reaction,
       event_idevent: eventId,
       user_iduser: reactingUserId
     });
 
-    // Fetch the full reaction data with user info
     const newReaction = await db('event_reaction')
-      .join('user', 'user.iduser', '=', 'event_reaction.user_iduser')
-      .where('event_reaction.idreaction', reactionId)
-      .select(
-        'event_reaction.idreaction as id',
-        'event_reaction.reaction as content',
-        'event_reaction.event_idevent as eventId',
-        'user.iduser as userId',
-        'user.name',
-        'user.username'
-      )
-      .first();
+        .join('user', 'user.iduser', '=', 'event_reaction.user_iduser')
+        .where('event_reaction.idreaction', reactionId)
+        .select(
+            'event_reaction.idreaction as id',
+            'event_reaction.reaction as content',
+            'event_reaction.event_idevent as eventId',
+            'user.iduser as userId',
+            'user.name',
+            'user.username'
+        )
+        .first();
 
-    res.status(201).json({ reaction: newReaction });
+    res.status(201).json({
+      reaction: {
+        id: newReaction.id,
+        content: newReaction.content,
+        eventId: newReaction.eventId,
+        user: {
+          id: newReaction.userId,
+          name: newReaction.name,
+          username: newReaction.username
+        }
+      }
+    });
 
   } catch (err) {
     console.error('Error reacting to event:', err);
@@ -312,6 +317,96 @@ router.delete('/event-reaction/:id', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Error deleting reaction:', err);
     res.status(500).json({ error: 'Server error while deleting reaction' });
+  }
+});
+
+
+router.get('/get-events/user/:id', authenticateToken, async (req, res) => {
+  const requestedUserId = parseInt(req.params.id);
+  const currentUserId = req.user.id;
+
+  if (isNaN(requestedUserId)) {
+    return res.status(400).json({ error: 'Invalid user ID' });
+  }
+
+  try {
+    if (requestedUserId !== currentUserId) {
+      const isFriend = await db('friendship')
+          .where(function () {
+            this.where({ user_iduser: currentUserId, friend_iduser: requestedUserId })
+                .orWhere({ user_iduser: requestedUserId, friend_iduser: currentUserId });
+          })
+          .first();
+
+      if (!isFriend) {
+        return res.status(403).json({ error: 'You are not allowed to see this user\'s events' });
+      }
+    }
+
+    const events = await db('event')
+        .where('user_iduser', requestedUserId)
+        .join('user', 'user.iduser', '=', 'event.user_iduser')
+        .orderBy('event.date', 'desc')
+        .select(
+            'event.idevent as id',
+            'event.date',
+            'event.type',
+            'event.metadata',
+            'user.iduser as userId',
+            'user.name as userName',
+            'user.username as userUsername'
+        );
+
+    const formatted = events.map(ev => ({
+      id: ev.id,
+      date: ev.date,
+      type: ev.type,
+      metaData: JSON.parse(ev.metadata),
+      user: {
+        id: ev.userId,
+        name: ev.userName,
+        username: ev.userUsername
+      }
+    }));
+
+    res.json({ data: formatted, error: null });
+  } catch (err) {
+    console.error('Error fetching user events:', err);
+    res.status(500).json({ data: [], error: 'Server error' });
+  }
+});
+
+
+// DELETE /events/delete/:id
+router.delete('/delete/:id', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  const eventId = parseInt(req.params.id);
+
+  if (isNaN(eventId)) {
+    return res.status(400).json({ error: 'Invalid event ID' });
+  }
+
+  try {
+    const event = await db('event').where({ idevent: eventId }).first();
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    if (event.user_iduser !== userId) {
+      return res.status(403).json({ error: 'You can only delete your own events' });
+    }
+
+    // Delete associated reactions first
+    await db('event_reaction').where({ event_idevent: eventId }).del();
+
+    // Then delete the event itself
+    await db('event').where({ idevent: eventId }).del();
+
+    res.status(200).json({ message: 'Event deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting event:', err);
+    res.status(500).json({ error: 'Server error while deleting event' });
   }
 });
 

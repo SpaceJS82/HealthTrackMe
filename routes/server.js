@@ -12,6 +12,7 @@ const eventsRoutes = require('./events');
 const healthRoutes = require('./health');
 const profileRoutes = require('./profile');
 const inviteRoutes = require('./invites');
+const {authenticateToken} = require("./auth");
 
 // Middleware to parse JSON bodies
 app.use(express.static(path.join(__dirname, '../public'))); 
@@ -22,6 +23,10 @@ const JWT_SECRET = process.env.JWT_SECRET;
  // Change to a more secure secret in production
 
 // Serve login page (optional, as you might just return an API response)
+
+router.get("/check-connectivity", async (req, res) => {
+    res.json(200);
+});
 
 // Handle login POST request
 router.post('/login', async (req, res) => {
@@ -48,7 +53,14 @@ router.post('/login', async (req, res) => {
       { expiresIn: '15m' } // Token expires in 15 min
     );
 
-    res.status(200).json({ token }); // Send the token to the client
+    res.status(200).json({
+      token,
+      user: {
+        id: user.iduser,
+        username: user.username,
+        name: user.name
+      }
+    });
   } catch (error) {
     console.error(error);
     res.status(500).send('Error logging in');

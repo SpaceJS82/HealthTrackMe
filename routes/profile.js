@@ -9,7 +9,7 @@ const router = express.Router();
 // PATCH /profile/name
 router.patch('/name', async (req, res) => {
   const { name } = req.body;
-  const userId = req.user?.id;
+  const userId = req.user?.iduser;
   console.log('Decoded token user:', req.user);
 
 
@@ -27,7 +27,7 @@ router.patch('/name', async (req, res) => {
 // PATCH /profile/password
 router.patch('/password', async (req, res) => {
   const { oldPassword, newPassword } = req.body;
-  const userId = req.user?.id;
+  const userId = req.user?.iduser;
 
   if (!oldPassword || !newPassword) return res.status(400).send('Old and new password required');
 
@@ -49,7 +49,7 @@ router.patch('/password', async (req, res) => {
 // PATCH /profile/username
 router.patch('/username', async (req, res) => {
   const { username } = req.body;
-  const userId = req.user?.id;
+  const userId = req.user?.iduser;
 
   if (!username) return res.status(400).send('Username is required');
 

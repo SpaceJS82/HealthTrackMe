@@ -9,34 +9,46 @@ const dayjs = require('dayjs');
 
 router.get('/get-friends', authenticateToken, async (req, res) => {
   const userId = req.user.id;
-  const todayStart = dayjs().startOf('day').format('YYYY-MM-DD HH:mm:ss');
-  const todayEnd = dayjs().endOf('day').format('YYYY-MM-DD HH:mm:ss');
 
   try {
+    // Subquery to get max date per user for today
+    const subquery = db('health_metric')
+        .select('user_iduser')
+        .max('date as max_date')
+        .where('type', 'sleep')
+        .andWhereRaw('DATE(date) = CURDATE()')
+        .groupBy('user_iduser')
+        .as('latest_date_per_user');
+
+    // Join back to health_metric to get value for latest date
+    const latestSleep = db('health_metric')
+        .join(subquery, function () {
+          this.on('health_metric.user_iduser', '=', 'latest_date_per_user.user_iduser')
+              .andOn('health_metric.date', '=', 'latest_date_per_user.max_date');
+        })
+        .select('health_metric.user_iduser', 'health_metric.value')
+        .as('latest_sleep');
+
     const friendsWithUser = await db('user')
-      .leftJoin('health_metric', function () {
-        this.on('user.iduser', '=', 'health_metric.user_iduser')
-          .andOn('health_metric.type', '=', db.raw('?', ['sleep']))
-          .andOnBetween('health_metric.date', [todayStart, todayEnd]);
-      })
-      .where(function () {
-        this.whereIn('user.iduser', function () {
-          this.select('friend_iduser')
-            .from('friendship')
-            .where('user_iduser', userId);
-        }).orWhere('user.iduser', userId); // include yourself
-      })
-      .select(
-        'user.iduser as id',
-        'user.name',
-        'user.username',
-        'health_metric.value as today_sleep_score'
-      )
-      .orderBy('today_sleep_score', 'desc');
+        .leftJoin(latestSleep, 'user.iduser', 'latest_sleep.user_iduser')
+        .where(function () {
+          this.whereIn('user.iduser', function () {
+            this.select('friend_iduser')
+                .from('friendship')
+                .where('user_iduser', userId);
+          }).orWhere('user.iduser', userId); // include self
+        })
+        .select(
+            'user.iduser as id',
+            'user.name',
+            'user.username',
+            'latest_sleep.value as today_sleep_score'
+        )
+        .orderBy('today_sleep_score', 'desc');
 
     res.json({ friends: friendsWithUser, error: null });
   } catch (err) {
-    console.error(err);
+    console.error('❌ Error in /get-friends:', err);
     res.status(500).json({ friends: [], error: 'Error fetching friends and sleep scores' });
   }
 });
