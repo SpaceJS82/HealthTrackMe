@@ -1,18 +1,18 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const db = require('./db'); // Knex instance
+const db = require('./routes/db'); // Knex instance
 const path = require('path');
 
 const app = express();
 const router = express.Router();
 
-const friendsRoutes = require('./friends');
-const eventsRoutes = require('./events');
-const healthRoutes = require('./health');
-const profileRoutes = require('./profile');
-const inviteRoutes = require('./invites');
-const {authenticateToken} = require("./auth");
+const friendsRoutes = require('./routes/friends');
+const eventsRoutes = require('./routes/events');
+const healthRoutes = require('./routes/health');
+const profileRoutes = require('./routes/profile');
+const inviteRoutes = require('./routes/invites');
+const {authenticateToken} = require("./routes/auth");
 
 // Middleware to parse JSON bodies
 app.use(express.static(path.join(__dirname, '../public'))); 

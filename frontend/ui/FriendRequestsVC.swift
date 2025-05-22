@@ -140,6 +140,10 @@ class FriendRequestsVC: UIViewController, UITableViewDelegate, UITableViewDataSo
                         if let error = error {
                             SharingManager.shared.displayError(error: error, on: self)
                         } else {
+                            let alert = UIAlertController(title: "Friend request sent".localized(), message: "To _USERNAME_".localized().replacingOccurrences(of: "_USERNAME_", with: username), preferredStyle: .alert)
+                            alert.addAction(UIAlertAction(title: "Done".localized(), style: .cancel))
+                            self.present(alert, animated: true)
+
                             self.refresh()
                         }
                     }

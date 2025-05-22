@@ -13,6 +13,7 @@ public enum APIErrorType: Int {
     case unknown = 300
     case network = 2
     case unauthorized = 200
+    case userAlreadyExists = 220
 }
 
 class SharingManager {
@@ -29,20 +30,6 @@ class SharingManager {
     }
 
     //Main page data
-    public func getEventData(completion: @escaping ([EventData], APIErrorType?)->()) {
-        let person = PersonData(id: 0, name: "Luka", username: "vercluka")
-
-        completion([
-            EventData(id: 0, user: person, metaData: [
-                "icon" : "figure.run",
-                "metric" : "214kcal",
-                "workoutType" : 37,
-                "isIndoor" : true,
-            ], type: .workout, date: .now),
-            EventData(id: 1, user: person, metaData: nil, type: .workout, date: .now),
-            EventData(id: 2, user: person, metaData: nil, type: .workout, date: .now),
-        ], nil)
-    }
 
     public func getPersonData(completion: @escaping ([PersonData], APIErrorType?) -> ()) {
         AuthManager.shared.getFriends { result in
@@ -55,7 +42,11 @@ class SharingManager {
                         let username = dict["username"] as? String
                     else { return nil }
 
-                    return PersonData(id: id, name: name, username: username)
+                    let person = PersonData(id: id, name: name, username: username)
+
+                    person.sleepScore = dict["today_sleep_score"] as? Double
+
+                    return person
                 }
 
                 completion(persons, nil)
@@ -91,22 +82,23 @@ class SharingManager {
         }
     }
 
-    public func removeFriend(to username: String, completion: @escaping ((APIErrorType?) -> ())) {
-        AuthManager.shared.getFriends { result in
-            switch result {
-            case .success(let friends):
-                guard let friend = friends.first(where: { $0["username"] as? String == username }),
-                      let id = friend["id"] as? Int else {
-                    print("❌ Friend not found with username:", username)
-                    completion(.userNotFound)
-                    return
+    func removeFriend(username: String, completion: @escaping ((APIErrorType?) -> ())) {
+        AuthManager.shared.deleteFriend(username: username) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    print("✅ Friend deleted:", username)
+                    completion(nil)
+                case .failure(let error as NSError):
+                    switch error.domain {
+                    case "FriendNotFound":
+                        completion(.userNotFound)
+                    case "DeleteFailed":
+                        completion(.internalServerError)
+                    default:
+                        completion(.network)
+                    }
                 }
-
-                AuthManager.shared.removeFriend(withId: id, completion: completion)
-
-            case .failure(let error):
-                print("❌ Failed to get friends:", error)
-                completion(.network)
             }
         }
     }
@@ -148,21 +140,196 @@ class SharingManager {
         }
     }
 
+    func getSleepScoresForThisWeek(for username: String, completion: @escaping ([HealthMetric], APIErrorType?) -> Void) {
+        AuthManager.shared.getFriendSleepScores(for: username) { result in
+            switch result {
+            case .success(let raw):
+                let metrics = raw.compactMap { HealthMetric(from: $0) }
+                completion(metrics.sorted(by: { $0.date < $1.date }), nil)
+            case .failure(let error):
+                print("❌ Failed to fetch scores:", error)
+                completion([], .unknown)
+            }
+        }
+    }
 
-    //Error handeling
-    public func displayError(error: APIErrorType, on: UIViewController, retryAction: (()->())? = nil) {
-        let alert = UIAlertController(title: "\("Error".localized()) \(error.rawValue)", message: "Something went wrong.".localized(), preferredStyle: .alert)
 
-        if let action = retryAction {
-            alert.addAction(UIAlertAction(title: "Retry".localized(), style: .default, handler: { _ in
-                action()
-            }))
+    func parseEventData(from dictArray: [[String: Any]]) -> [EventData] {
+        var events: [EventData] = []
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        for dict in dictArray {
+            guard
+                let id = dict["id"] as? Int,
+                let typeRaw = dict["type"] as? String,
+                let type = EventData.EventDataType(rawValue: typeRaw),
+                let dateString = dict["date"] as? String,
+                let date = formatter.date(from: dateString),
+                let userDict = dict["user"] as? [String: Any],
+                let user = PersonData(dict: userDict)
+            else {
+                print("❌ Skipping event due to missing or invalid fields:", dict)
+                continue
+            }
+
+            let metadata = dict["metaData"] as? [String: Any]
+            let event = EventData(id: id, user: user, metaData: metadata, type: type, date: date)
+
+            if let reactionArray = dict["reactions"] as? [[String: Any]] {
+                event.reactions = reactionArray.compactMap {
+                    EventReaction(from: $0, event: event)
+                }
+            }
+
+            events.append(event)
         }
 
-        alert.addAction(UIAlertAction(title: "Cancel".localized(), style: .cancel))
+        print("✅ Parsed \(events.count) events")
+        return events
+    }
 
-        on.present(alert, animated: true)
+    func getEventData(completion: @escaping ([EventData], APIErrorType?) -> Void) {
+        AuthManager.shared.getFriendEvents { result in
+            switch result {
+            case .success(let rawData):
+                let events = self.parseEventData(from: rawData)
+                DispatchQueue.main.async {
+                    completion(events, nil)
+                }
+            case .failure:
+                DispatchQueue.main.async {
+                    completion([], .unknown)
+                }
+            }
+        }
+    }
 
+    func uploadSleepScore(value: Double, date: Date, completion: @escaping (Bool) -> Void) {
+        AuthManager.shared.uploadSleepScore(value: value, date: date) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    print("✅ Sleep score uploaded")
+                    completion(true)
+                case .failure(let error):
+                    print("❌ Failed to upload sleep score:", error)
+                    completion(false)
+                }
+            }
+        }
+    }
+
+    func uploadEvent(metadata: [String: Any], type: EventData.EventDataType, completion: @escaping (Bool) -> Void) {
+        AuthManager.shared.uploadEvent(metadata: metadata, type: type.rawValue) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    completion(true)
+                case .failure(let error):
+                    print("❌ Failed to upload event:", error)
+                    completion(false)
+                }
+            }
+        }
+    }
+
+    func reactToEvent(event: EventData, reaction: String, completion: @escaping (EventReaction?) -> Void) {
+        AuthManager.shared.reactToEvent(eventId: event.id, reaction: reaction) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let json):
+                    guard let dict = json["reaction"] as? [String: Any] else {
+                        print("❌ 'reaction' key missing in JSON:", json)
+                        completion(nil)
+                        return
+                    }
+
+                    if let parsed = EventReaction(from: dict, event: event) {
+                        completion(parsed)
+                    } else {
+                        print("❌ Failed to parse EventReaction from dict:", dict)
+                        completion(nil)
+                    }
+
+                case .failure(let error):
+                    print("❌ Failed to react:", error)
+                    completion(nil)
+                }
+            }
+        }
+    }
+
+    func deleteReaction(id: Int, completion: @escaping (Bool) -> Void) {
+        AuthManager.shared.deleteEventReaction(reactionId: id) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    completion(true)
+                case .failure(let error):
+                    print("❌ Failed to delete reaction:", error)
+                    completion(false)
+                }
+            }
+        }
+    }
+
+    func deleteEvent(id: Int, completion: @escaping (Bool) -> Void) {
+        AuthManager.shared.deleteEvent(eventId: id) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    completion(true)
+                case .failure(let error):
+                    print("❌ Failed to delete event:", error)
+                    completion(false)
+                }
+            }
+        }
+    }
+
+
+    //Error handeling
+    public func displayError(error: APIErrorType, on: UIViewController, retryAction: (() -> Void)? = nil) {
+        guard AuthManager.shared.isLoggedIn else { return }
+
+        AuthManager.shared.checkServerConnectivity { success in
+            DispatchQueue.main.async {
+                let title = success ? "\("Error".localized())" : "Issues with connectivity".localized()
+                let description = success ? "Something went wrong.".localized() : "Try later when you have access to the internet.".localized()
+
+                let alert = UIAlertController(title: title, message: description, preferredStyle: .alert)
+
+                if let action = retryAction, success {
+                    alert.addAction(UIAlertAction(title: "Retry".localized(), style: .default, handler: { _ in
+                        action()
+                    }))
+                }
+
+                alert.addAction(UIAlertAction(title: "Cancel".localized(), style: .cancel))
+
+                on.present(alert, animated: true)
+            }
+        }
+    }
+
+
+    func getEvents(for user: PersonData, completion: @escaping ([EventData], APIErrorType?) -> Void) {
+        AuthManager.shared.getEvents(for: user.id) { result in
+            switch result {
+            case .success(let rawData):
+                let events = self.parseEventData(from: rawData)
+                DispatchQueue.main.async {
+                    completion(events, nil)
+                }
+            case .failure(let error):
+                print("❌ Failed to fetch events for user \(user.username):", error)
+                DispatchQueue.main.async {
+                    completion([], .network)
+                }
+            }
+        }
     }
 
 }

@@ -24,7 +24,7 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
     private let headerView = SharingHeader()
 
     private let refreshControl = UIRefreshControl()
-    private let tableView = UITableView(frame: .zero, style: .grouped)
+    public let tableView = UITableView(frame: .zero, style: .grouped)
 
     private let setUpButton = UIButton()
     private let setUpExplanationView = UILabel()
@@ -68,7 +68,120 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
         navigationTitleLabel.sizeToFit()
         self.navigationItem.titleView = navigationTitleLabel
 
-        self.navigationButton = self.getNavigationItem(image: "person.2.badge.gearshape.fill", target: self, action: #selector(onFriendsRequest), backgroundColor: .groupedSecondaryBackground)
+        self.navigationButton = self.getNavigationItem(image: "person.crop.circle", target: nil, action: nil, backgroundColor: .groupedSecondaryBackground)
+        (self.navigationButton.customView as? UIButton)?.showsMenuAsPrimaryAction = true
+        (self.navigationButton.customView as? UIButton)?.menu = UIMenu(children: [
+
+            // Edit Name
+            UIAction(title: "Edit name".localized(), handler: { _ in
+                let alert = UIAlertController(title: "Edit name".localized(), message: nil, preferredStyle: .alert)
+                alert.addTextField { $0.placeholder = "Enter new name".localized() }
+                alert.addAction(UIAlertAction(title: "Cancel".localized(), style: .cancel))
+                alert.addAction(UIAlertAction(title: "Save".localized(), style: .default, handler: { _ in
+                    let newName = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    if newName.count < 2 {
+                        self.showValidationError()
+                        return
+                    }
+                    AuthManager.shared.changeName(to: newName) { result in
+                        DispatchQueue.main.async {
+                            switch result {
+                            case .failure:
+                                SharingManager.shared.displayError(error: .unknown, on: self)
+                            case .success:
+                                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                                UserData.shared.fullName = newName
+                                self.refresh()
+                            }
+                        }
+                    }
+                }))
+                alert.view.tintColor = .customBlue
+                self.present(alert, animated: true)
+            }),
+
+            // Change Username
+            UIAction(title: "Change username".localized(), handler: { _ in
+                let alert = UIAlertController(title: "Change username".localized(), message: nil, preferredStyle: .alert)
+                alert.addTextField { $0.placeholder = "Enter new username".localized() }
+                alert.addAction(UIAlertAction(title: "Cancel".localized(), style: .cancel))
+                alert.addAction(UIAlertAction(title: "Save".localized(), style: .default, handler: { _ in
+                    let newUsername = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    if newUsername.count < 2 {
+                        self.showValidationError()
+                        return
+                    }
+                    AuthManager.shared.changeUsername(to: newUsername) { result in
+                        DispatchQueue.main.async {
+                            switch result {
+                            case .failure:
+                                SharingManager.shared.displayError(error: .unknown, on: self)
+                            case .success:
+                                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                            }
+                        }
+                    }
+                }))
+                alert.view.tintColor = .customBlue
+                self.present(alert, animated: true)
+            }),
+
+            // Change Password
+            UIAction(title: "Change password".localized(), handler: { _ in
+                let alert = UIAlertController(
+                    title: "Change password".localized(),
+                    message: nil,
+                    preferredStyle: .alert
+                )
+
+                alert.addTextField {
+                    $0.placeholder = "Current password".localized()
+                    $0.isSecureTextEntry = true
+                }
+                alert.addTextField {
+                    $0.placeholder = "New password".localized()
+                    $0.isSecureTextEntry = true
+                }
+
+                alert.addAction(UIAlertAction(title: "Cancel".localized(), style: .cancel))
+
+                alert.addAction(UIAlertAction(title: "Save".localized(), style: .default, handler: { _ in
+                    let oldPassword = alert.textFields?[0].text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    let newPassword = alert.textFields?[1].text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+                    guard oldPassword.count >= 2, newPassword.count >= 2 else {
+                        self.showValidationError()
+                        return
+                    }
+
+                    AuthManager.shared.changePassword(oldPassword: oldPassword, newPassword: newPassword) { result in
+                        DispatchQueue.main.async {
+                            switch result {
+                            case .success:
+                                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                            case .failure:
+                                SharingManager.shared.displayError(error: .unknown, on: self)
+                            }
+                        }
+                    }
+                }))
+                alert.view.tintColor = .customBlue
+                self.present(alert, animated: true)
+            }),
+
+            // Sign Out
+            UIAction(title: "Sign out".localized(), attributes: .destructive, handler: { _ in
+                let alert = UIAlertController(title: "Are you sure?".localized(), message: "You will be signed out.".localized(), preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "Cancel".localized(), style: .cancel))
+                alert.addAction(UIAlertAction(title: "Sign out".localized(), style: .destructive, handler: { _ in
+                    AuthManager.shared.signOut()
+                    self.navigationController?.popViewController(animated: true)
+                }))
+                alert.view.tintColor = .customBlue
+                self.present(alert, animated: true)
+            })
+
+        ])
 
 
         tableView.isHidden = true
@@ -116,14 +229,20 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
     }
 
     @objc
-    private func onFriendsRequest() {
-        self.navigationController?.pushViewController(FriendRequestsVC(), animated: true)
-    }
-
-    @objc
     private func onRefreshControl() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         self.refresh()
+    }
+
+    private func showValidationError() {
+        let errorAlert = UIAlertController(
+            title: "Invalid Input".localized(),
+            message: "Input must be at least 2 characters.".localized(),
+            preferredStyle: .alert
+        )
+        errorAlert.addAction(UIAlertAction(title: "Done".localized(), style: .default))
+        errorAlert.view.tintColor = .customBlue
+        self.present(errorAlert, animated: true)
     }
 
     @objc
@@ -269,6 +388,7 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
         private let emptyLabel = UILabel()
 
         private let frendsTitle = UILabel()
+        private let friendsButton = UIButton()
 
         override func layoutSubviews() {
             super.layoutSubviews()
@@ -280,6 +400,7 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
             emptyLabel.frame = eventsStack.frame
 
             frendsTitle.frame = CGRect(x: 15, y: eventsStack.frame.maxY + 30, width: self.frame.width - 30, height: 40)
+            friendsButton.frame = CGRect(x: 15, y: eventsStack.frame.maxY + 30, width: self.frame.width - 30, height: 40)
 
         }
 
@@ -313,6 +434,15 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
             frendsTitle.textAlignment = .left
             self.addSubview(frendsTitle)
 
+            friendsButton.setTitle("Requests".localized(), for: .normal)
+            friendsButton.setTitleColor(.customBlue, for: .normal)
+            friendsButton.titleLabel?.font = .roundedFont(ofSize: 17, weight: .semibold)
+            friendsButton.contentHorizontalAlignment = .right
+            friendsButton.addAction(UIAction(handler: { _ in
+                self.viewController?.navigationController?.pushViewController(FriendRequestsVC(), animated: true)
+            }), for: .touchUpInside)
+            self.addSubview(friendsButton)
+
         }
 
         public func refresh(with: [SharingManager.EventData]) {
@@ -344,8 +474,9 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
             private let titleView = UILabel()
             private let subTitleView = UILabel()
 
-            private let leftReactionBadge = UILabel()
-            private let rightReactionBadge = UILabel()
+            private let rightSideReactionBadge = UILabel()
+            private let leftSideReactionBadge = UILabel()
+            private let reactionsButton = UIButton()
 
             convenience init(data: SharingManager.EventData, header: SharingHeader) {
                 self.init()
@@ -362,26 +493,28 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
                 backView.frame = CGRect(x: 0, y: 8, width: self.frame.width - 8, height: self.frame.height - 8)
                 backView.layer.cornerRadius = 24
 
-                messageView.frame = CGRect(x: 30, y: 30, width: backView.frame.width - 60, height: 25)
+                messageView.frame = CGRect(x: 30, y: 20, width: backView.frame.width - 60, height: 45)
                 timeLabel.frame = CGRect(x: 30, y: messageView.frame.maxY, width: backView.frame.width - 60, height: 15)
 
-                imageBackground.frame = CGRect(x: (backView.frame.width - 110) / 2, y: timeLabel.frame.maxY + 10, width: 110, height: 110)
-                imageBackground.layer.cornerRadius = 110 / 2
+                imageBackground.frame = CGRect(x: (backView.frame.width - 100) / 2, y: timeLabel.frame.maxY + 10, width: 100, height: 100)
+                imageBackground.layer.cornerRadius = 100 / 2
 
                 imageView.frame = CGRect(x: (imageBackground.frame.width - 70) / 2, y: (imageBackground.frame.height - 70) / 2, width: 70, height: 70)
 
                 titleView.frame = CGRect(x: 30, y: imageBackground.frame.maxY + 20, width: backView.frame.width - 60, height: 25)
                 subTitleView.frame = CGRect(x: 30, y: titleView.frame.maxY, width: backView.frame.width - 60, height: 25)
 
-                leftReactionBadge.frame = CGRect(x: self.frame.width - 35, y: 0, width: 35, height: 35)
-                leftReactionBadge.layer.cornerRadius = 35 / 2
-                leftReactionBadge.layer.borderWidth = 2
-                leftReactionBadge.layer.borderColor = UIColor.groupedBackground.cgColor
+                rightSideReactionBadge.frame = CGRect(x: self.frame.width - 35, y: 0, width: 35, height: 35)
+                rightSideReactionBadge.layer.cornerRadius = 35 / 2
+                rightSideReactionBadge.layer.borderWidth = 2
+                rightSideReactionBadge.layer.borderColor = UIColor.groupedBackground.cgColor
 
-                rightReactionBadge.frame = CGRect(x: self.frame.width - 60, y: 0, width: 35, height: 35)
-                rightReactionBadge.layer.cornerRadius = 35 / 2
-                rightReactionBadge.layer.borderWidth = 2
-                rightReactionBadge.layer.borderColor = UIColor.groupedBackground.cgColor
+                leftSideReactionBadge.frame = CGRect(x: self.frame.width - 60, y: 0, width: 35, height: 35)
+                leftSideReactionBadge.layer.cornerRadius = 35 / 2
+                leftSideReactionBadge.layer.borderWidth = 2
+                leftSideReactionBadge.layer.borderColor = UIColor.groupedBackground.cgColor
+
+                reactionsButton.frame = CGRect(x: leftSideReactionBadge.frame.minX, y: leftSideReactionBadge.frame.minY, width: rightSideReactionBadge.frame.maxX - leftSideReactionBadge.frame.minX, height: rightSideReactionBadge.frame.height)
 
             }
 
@@ -396,6 +529,7 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
                 messageView.textColor = .title
                 messageView.adjustsFontSizeToFitWidth = true
                 messageView.font = .roundedFont(ofSize: 17, weight: .semibold)
+                messageView.numberOfLines = 2
                 backView.addSubview(messageView)
 
                 timeLabel.textAlignment = .left
@@ -422,21 +556,24 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
                 subTitleView.font = .roundedFont(ofSize: 17, weight: .semibold)
                 backView.addSubview(subTitleView)
 
-                leftReactionBadge.textColor = .title
-                leftReactionBadge.textAlignment = .center
-                leftReactionBadge.font = .roundedFont(ofSize: 14, weight: .semibold)
-                leftReactionBadge.adjustsFontSizeToFitWidth = true
-                leftReactionBadge.backgroundColor = .groupedSecondaryBackground
-                leftReactionBadge.clipsToBounds = true
-                self.addSubview(leftReactionBadge)
+                rightSideReactionBadge.textColor = .title
+                rightSideReactionBadge.textAlignment = .center
+                rightSideReactionBadge.font = .roundedFont(ofSize: 14, weight: .semibold)
+                rightSideReactionBadge.adjustsFontSizeToFitWidth = true
+                rightSideReactionBadge.backgroundColor = .groupedSecondaryBackground
+                rightSideReactionBadge.clipsToBounds = true
+                self.addSubview(rightSideReactionBadge)
 
-                rightReactionBadge.textColor = .title
-                rightReactionBadge.textAlignment = .center
-                rightReactionBadge.font = .roundedFont(ofSize: 14, weight: .semibold)
-                rightReactionBadge.adjustsFontSizeToFitWidth = true
-                rightReactionBadge.backgroundColor = .groupedSecondaryBackground
-                rightReactionBadge.clipsToBounds = true
-                self.addSubview(rightReactionBadge)
+                leftSideReactionBadge.textColor = .title
+                leftSideReactionBadge.textAlignment = .center
+                leftSideReactionBadge.font = .roundedFont(ofSize: 14, weight: .semibold)
+                leftSideReactionBadge.adjustsFontSizeToFitWidth = true
+                leftSideReactionBadge.backgroundColor = .groupedSecondaryBackground
+                leftSideReactionBadge.clipsToBounds = true
+                self.addSubview(leftSideReactionBadge)
+
+                reactionsButton.addTarget(self, action: #selector(onReactions), for: .touchUpInside)
+                self.addSubview(reactionsButton)
 
                 let interaction = UIContextMenuInteraction(delegate: self)
                 backView.addInteraction(interaction)
@@ -448,17 +585,17 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
                 self.timeLabel.text = Date.now.timeIntervalSince(data.date).howMuchTimeAgoDescription
 
                 if data.reactions.isEmpty {
-                    self.leftReactionBadge.isHidden = true
-                    self.rightReactionBadge.isHidden = true
+                    self.rightSideReactionBadge.isHidden = true
+                    self.leftSideReactionBadge.isHidden = true
                 } else if data.reactions.count == 1 {
-                    self.leftReactionBadge.isHidden = false
-                    self.leftReactionBadge.text = data.reactions.last?.content
-                    self.rightReactionBadge.isHidden = true
+                    self.rightSideReactionBadge.isHidden = false
+                    self.rightSideReactionBadge.text = data.reactions.last?.content
+                    self.leftSideReactionBadge.isHidden = true
                 } else {
-                    self.leftReactionBadge.isHidden = false
-                    self.leftReactionBadge.text = data.reactions.last?.content
-                    self.rightReactionBadge.isHidden = false
-                    self.leftReactionBadge.text = String(data.reactions.count - 1) + "+"
+                    self.rightSideReactionBadge.isHidden = false
+                    self.rightSideReactionBadge.text = data.reactions.last?.content
+                    self.leftSideReactionBadge.isHidden = false
+                    self.rightSideReactionBadge.text = String(data.reactions.count - 1) + "+"
                 }
 
                 if data.type == .workout {
@@ -492,6 +629,16 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
                     formatter.dateFormat = "EEEE"
                     self.subTitleView.text = formatter.string(from: data.date)
                 }
+            }
+
+            @objc
+            private func onReactions() {
+                guard let data = self.data, !data.reactions.isEmpty else { return }
+                guard let sharingVC = self.viewController as? SharingVC else { return }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                let vc = EventReactionsVC(event: data)
+                vc.sharingVC = sharingVC
+                self.viewController?.present(ThemeNavigationViewController(rootViewController: vc), animated: true)
             }
 
             func contextMenuInteraction(_ interaction: UIContextMenuInteraction, configurationForMenuAtLocation location: CGPoint) -> UIContextMenuConfiguration? {

@@ -10,7 +10,7 @@ import Foundation
 class AuthManager {
     static let shared = AuthManager()
 
-    public let baseURL = "http://localhost:3000"
+    public let baseURL = /*"http://localhost:1004"*/"https://api.getyoa.app/yoaapi"
     private let tokenKey = "jwtToken"
 
     private var token: String? {
