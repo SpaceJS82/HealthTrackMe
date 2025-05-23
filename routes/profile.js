@@ -1,6 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
-const db = require('./db');
+const db = require('../db/db');
 
 const router = express.Router();
 
@@ -53,11 +53,24 @@ router.patch('/username', async (req, res) => {
 
   if (!username) return res.status(400).send('Username is required');
 
+  // Email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(username.trim().toLowerCase())) {
+    return res.status(400).send('Invalid email format');
+  }
+
   try {
-    const exists = await db('user').where({ username }).andWhereNot('iduser', userId).first();
+    const exists = await db('user')
+        .where({ username })
+        .andWhereNot('iduser', userId)
+        .first();
+
     if (exists) return res.status(409).send('Username already taken');
 
-    await db('user').where({ iduser: userId }).update({ username });
+    await db('user')
+        .where({ iduser: userId })
+        .update({ username });
+
     res.send('Username updated successfully');
   } catch (error) {
     console.error(error);

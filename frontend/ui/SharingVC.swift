@@ -14,6 +14,7 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
     private var isFirstRefresh: Bool = true
     private var isRefreshing: Bool = false
     fileprivate var data: [SharingManager.PersonData] = []
+    private var selectedIndex: IndexPath?
 
     //UI
     private let indicatorVC = ActivityIndicatorVC()
@@ -101,16 +102,19 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
             }),
 
             // Change Username
-            UIAction(title: "Change username".localized(), handler: { _ in
-                let alert = UIAlertController(title: "Change username".localized(), message: nil, preferredStyle: .alert)
-                alert.addTextField { $0.placeholder = "Enter new username".localized() }
+            UIAction(title: "Change email".localized(), handler: { _ in
+                let alert = UIAlertController(title: "Change email".localized(), message: nil, preferredStyle: .alert)
+                alert.addTextField { $0.placeholder = "Enter new email".localized() }
                 alert.addAction(UIAlertAction(title: "Cancel".localized(), style: .cancel))
                 alert.addAction(UIAlertAction(title: "Save".localized(), style: .default, handler: { _ in
                     let newUsername = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                    if newUsername.count < 2 {
+
+                    let emailRegex = "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+                    guard NSPredicate(format: "SELF MATCHES %@", emailRegex).evaluate(with: newUsername) else {
                         self.showValidationError()
                         return
                     }
+
                     AuthManager.shared.changeUsername(to: newUsername) { result in
                         DispatchQueue.main.async {
                             switch result {
@@ -175,7 +179,7 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
                 alert.addAction(UIAlertAction(title: "Cancel".localized(), style: .cancel))
                 alert.addAction(UIAlertAction(title: "Sign out".localized(), style: .destructive, handler: { _ in
                     AuthManager.shared.signOut()
-                    self.navigationController?.popViewController(animated: true)
+                    self.refresh()
                 }))
                 alert.view.tintColor = .customBlue
                 self.present(alert, animated: true)
@@ -207,12 +211,12 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
         setUpButton.setTitleColor(.white, for: .normal)
         setUpButton.titleLabel?.font = .roundedFont(ofSize: 17, weight: .semibold)
         setUpButton.addAction(UIAction(handler: { _ in
-            self.present(ThemeNavigationViewController(rootViewController: LoginVC(for: self)), animated: true)
+            self.present(ThemeNavigationViewController(rootViewController: RegisterVC(for: self)), animated: true)
         }), for: .touchUpInside)
         view.addSubview(setUpButton)
 
         setUpExplanationView.isHidden = true
-        setUpExplanationView.text = "Here is some great explanation on how to do it.".localized()
+        setUpExplanationView.text = "Set up your profile to start sharing your moments on your wellbeing jounrey with friends.".localized()
         setUpExplanationView.textAlignment = .left
         setUpExplanationView.textColor = .secondaryText
         setUpExplanationView.font = .roundedFont(ofSize: 14, weight: .regular)
@@ -370,6 +374,7 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
     func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
         if let cell = cell as? PersonCell {
             cell.refresh(with: self.data[indexPath.row])
+            cell.row = indexPath.row
         }
     }
 
@@ -396,11 +401,11 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
             titleView.frame = CGRect(x: 15, y: 0, width: self.frame.width - 30, height: 40)
 
             highlightsLabel.frame = CGRect(x: 15, y: titleView.frame.maxY + 30, width: self.frame.width - 30, height: 40)
-            eventsStack.frame = CGRect(x: 0, y: highlightsLabel.frame.maxY + 2, width: self.frame.width, height: 288)
+            eventsStack.frame = CGRect(x: 0, y: highlightsLabel.frame.maxY - 3, width: self.frame.width, height: 313)
             emptyLabel.frame = eventsStack.frame
 
-            frendsTitle.frame = CGRect(x: 15, y: eventsStack.frame.maxY + 30, width: self.frame.width - 30, height: 40)
-            friendsButton.frame = CGRect(x: 15, y: eventsStack.frame.maxY + 30, width: self.frame.width - 30, height: 40)
+            frendsTitle.frame = CGRect(x: 15, y: eventsStack.frame.maxY + 10, width: self.frame.width - 30, height: 40)
+            friendsButton.frame = CGRect(x: 15, y: eventsStack.frame.maxY + 10, width: self.frame.width - 30, height: 40)
 
         }
 
@@ -450,8 +455,7 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
             self.eventsStack.setViews(self.data.enumerated().map({ index, data in
                 return EventCell(data: data, header: self)
                     .size(CGSize(width: 283))
-                    .padding(UIEdgeInsets(left: (index == 0) ? 15 : 0,
-                                          right: (index == self.data.count - 1) ? 15 : 2))
+                    .padding(UIEdgeInsets(top: 5, left: (index == 0) ? 15 : 0, bottom: 22, right: (index == self.data.count - 1) ? 15 : 2))
             }))
             self.emptyLabel.isHidden = !self.data.isEmpty
         }
@@ -492,6 +496,8 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
 
                 backView.frame = CGRect(x: 0, y: 8, width: self.frame.width - 8, height: self.frame.height - 8)
                 backView.layer.cornerRadius = 24
+                backView.setDefaultShadow()
+                self.layer.shadowRadius = 5
 
                 messageView.frame = CGRect(x: 30, y: 20, width: backView.frame.width - 60, height: 45)
                 timeLabel.frame = CGRect(x: 30, y: messageView.frame.maxY, width: backView.frame.width - 60, height: 15)
@@ -757,6 +763,7 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
 
         //Data
         private var data: SharingManager.PersonData?
+        public var row: Int = 0
 
         //UI
         private let backView = UIView()
@@ -772,6 +779,7 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
 
             backView.frame = CGRect(x: 15, y: 0, width: self.frame.width - 30, height: self.frame.height - 10)
             backView.layer.cornerRadius = 24
+            backView.setDefaultShadow()
 
             iconView.frame = CGRect(x: 15, y: (backView.frame.height - 50) / 2, width: 50, height: 50)
             iconView.layer.cornerRadius = 25
@@ -811,7 +819,23 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
 
             button.addAction(UIAction(handler: { _ in
                 if let data = self.data {
-                    self.viewController?.navigationController?.pushViewController(FriendVC(data), animated: true)
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    let vc = FriendVC(data)
+                    if let sharingVC = self.viewController as? SharingVC {
+                        sharingVC.selectedIndex = IndexPath(row: self.row, section: 0)
+
+                        if #available(iOS 18.0, *) {
+                            vc.preferredTransition = .zoom(sourceViewProvider: { context in
+                                if let index = sharingVC.selectedIndex, let cell = sharingVC.tableView.cellForRow(at: index) as? PersonCell {
+                                    return cell
+                                } else {
+                                    return nil
+                                }
+                            })
+                        }
+
+                    }
+                    self.viewController?.navigationController?.pushViewController(vc, animated: true)
                 }
             }), for: .touchUpInside)
             backView.addSubview(button)
@@ -918,10 +942,10 @@ fileprivate extension TimeInterval {
             return "Now".localized()
         } else if abs(self) < 3600 {
             let minutes = Int(self / 60)
-            return "\(minutes)min"
+            return "\(minutes)\("min ago".localized())"
         } else  if abs(self) < 3600 * 24 {
             let hours = Int(self / 3600)
-            return "\(hours)h ago"
+            return "\(hours)\("h ago".localized())"
         } else {
             let days = Int(self / (3600 * 24))
             return "\(days)\("d ago".localized())"

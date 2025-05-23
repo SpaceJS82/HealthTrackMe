@@ -32,12 +32,12 @@ class LoginVC: UIViewController, UITextFieldDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        self.navigationItem.rightBarButtonItem = self.getNavigationItem(image: "xmark", target: self, action: #selector(onClose), backgroundColor: .secondaryBackground)
+        self.navigationItem.leftBarButtonItem = self.getNavigationItem(image: "chevron.left", target: self, action: #selector(onBack), backgroundColor: .secondaryBackground)
 
         view.backgroundColor = .background
         setupUI()
     }
-    
+
     private func setupUI() {
         // Title
         titleLabel.text = "Join your friends".localized()
@@ -45,21 +45,22 @@ class LoginVC: UIViewController, UITextFieldDelegate {
         titleLabel.textAlignment = .center
         titleLabel.textColor = .title
         view.addSubview(titleLabel)
-        
+
         // Username
-        usernameField.placeholder = "Username".localized()
+        usernameField.placeholder = "Email".localized()
+        usernameField.keyboardType = .emailAddress
         usernameField.autocapitalizationType = .none
         usernameField.font = .roundedFont(ofSize: 17, weight: .regular)
         usernameField.textColor = .title
         usernameField.delegate = self
         usernameField.returnKeyType = .next
-        
+
         usernameContainer.backgroundColor = .secondaryBackground
         usernameContainer.layer.cornerRadius = 20
         usernameContainer.layer.masksToBounds = true
         usernameContainer.addSubview(usernameField)
         view.addSubview(usernameContainer)
-        
+
         // Password
         passwordField.placeholder = "Password".localized()
         passwordField.isSecureTextEntry = true
@@ -73,7 +74,7 @@ class LoginVC: UIViewController, UITextFieldDelegate {
         passwordContainer.layer.masksToBounds = true
         passwordContainer.addSubview(passwordField)
         view.addSubview(passwordContainer)
-        
+
         // Login Button
         loginButton.setTitle("Login", for: .normal)
         loginButton.titleLabel?.font = .roundedFont(ofSize: 17, weight: .semibold)
@@ -82,7 +83,7 @@ class LoginVC: UIViewController, UITextFieldDelegate {
         loginButton.layer.cornerRadius = 20
         loginButton.addTarget(self, action: #selector(loginTapped), for: .touchUpInside)
         view.addSubview(loginButton)
-        
+
         // Register Button
         registerButton.setTitle("👋 My first time here", for: .normal)
         registerButton.titleLabel?.font = .roundedFont(ofSize: 17, weight: .semibold)
@@ -95,7 +96,7 @@ class LoginVC: UIViewController, UITextFieldDelegate {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        
+
         let padding: CGFloat = 15
         let fieldHeight: CGFloat = 50
 
@@ -110,9 +111,9 @@ class LoginVC: UIViewController, UITextFieldDelegate {
         loginButton.frame = CGRect(x: padding, y: passwordContainer.frame.maxY + 30, width: view.frame.width - 2 * padding, height: fieldHeight)
         registerButton.frame = CGRect(x: padding, y: loginButton.frame.maxY + 10, width: view.frame.width - 2 * padding, height: fieldHeight)
     }
-    
+
     // MARK: - UITextFieldDelegate
-    
+
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         textField.resignFirstResponder()
         return true
@@ -121,21 +122,34 @@ class LoginVC: UIViewController, UITextFieldDelegate {
     // MARK: - Actions
     @objc private func loginTapped() {
         view.endEditing(true)
-        
+
         let username = self.usernameField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let password = self.passwordField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        
+
         guard !username.isEmpty, !password.isEmpty else {
             let alert = UIAlertController(
                 title: "Missing Information".localized(),
-                message: "Please enter both username and password.".localized(),
+                message: "Please enter both email and password.".localized(),
                 preferredStyle: .alert
             )
             alert.addAction(UIAlertAction(title: "Done".localized(), style: .default))
             self.present(alert, animated: true)
             return
         }
-        
+
+        // Simple email format validation
+        let emailPredicate = NSPredicate(format:"SELF MATCHES %@", "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
+        if !emailPredicate.evaluate(with: username) {
+            let alert = UIAlertController(
+                title: "Invalid Email".localized(),
+                message: "Please enter a valid email address.".localized(),
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK".localized(), style: .default))
+            self.present(alert, animated: true)
+            return
+        }
+
         AuthManager.shared.login(username: username, password: password) { success in
             DispatchQueue.main.async {
                 if success {
@@ -147,13 +161,12 @@ class LoginVC: UIViewController, UITextFieldDelegate {
             }
         }
     }
-    
+
     @objc private func registerTapped() {
-        self.navigationController?.pushViewController(RegisterVC(for: self.sharingVC), animated: true)
+        self.navigationController?.popViewController(animated: true)
     }
-    
-    @objc
-    private func onClose() {
-        self.dismiss(animated: true)
+
+    @objc private func onBack() {
+        self.navigationController?.popViewController(animated: true)
     }
 }

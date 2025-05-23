@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const db = require('./routes/db'); // Knex instance
+const db = require('./db/db'); // Knex instance
 const path = require('path');
 
 const app = express();
@@ -15,17 +15,17 @@ const inviteRoutes = require('./routes/invites');
 const {authenticateToken} = require("./routes/auth");
 
 // Middleware to parse JSON bodies
-app.use(express.static(path.join(__dirname, '../public'))); 
+app.use(express.static(path.join(__dirname, '../public')));
 app.use(express.json());
 
 // Secret key for JWT signing
 const JWT_SECRET = process.env.JWT_SECRET;
- // Change to a more secure secret in production
+// Change to a more secure secret in production
 
 // Serve login page (optional, as you might just return an API response)
 
 router.get("/check-connectivity", async (req, res) => {
-    res.json(200);
+  res.json(200);
 });
 
 // Handle login POST request
@@ -48,9 +48,9 @@ router.post('/login', async (req, res) => {
 
     // Create a JWT token and send it to the client
     const token = jwt.sign(
-      { id: user.iduser, username: user.username, name: user.name },
-      JWT_SECRET,
-      { expiresIn: '15m' } // Token expires in 15 min
+        { id: user.iduser, username: user.username, name: user.name },
+        JWT_SECRET,
+        { expiresIn: '15m' } // Token expires in 15 min
     );
 
     res.status(200).json({
@@ -70,6 +70,13 @@ router.post('/login', async (req, res) => {
 // Handle register POST request
 router.post('/register', async (req, res) => {
   const { username, password, name } = req.body;
+
+  // Simple email validation regex
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailRegex.test(username)) {
+    return res.status(400).send('Invalid email address');
+  }
 
   try {
     const existingUsers = await db('user').where({ username });
@@ -135,7 +142,7 @@ app.use('/invites', inviteRoutes);
 
 module.exports = router;
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 1004;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
