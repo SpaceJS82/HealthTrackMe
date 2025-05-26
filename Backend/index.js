@@ -3,6 +3,8 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('./routes/db'); // Knex instance
 const path = require('path');
+const cors = require('cors');
+
 
 const app = express();
 const router = express.Router();
@@ -18,6 +20,7 @@ const eventAnalyticsRoutes = require('./routes/analytics/events');
 const friendshipAnalyticsRoutes = require('./routes/analytics/friendship');
 const reactionsAnalyticsRoutes = require('./routes/analytics/reactions');
 
+app.use(cors());
 // Middleware to parse JSON bodies
 app.use(express.static(path.join(__dirname, '../public')));
 app.use(express.json());

@@ -1,11 +1,29 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import Login from "./components/login";
 import "./App.css";
 
 const HomeComponent = () => <div className="content">🏠 This is the Home component.</div>;
 const SettingsComponent = () => <div className="content">⚙️ This is the Settings component.</div>;
 
 function App() {
+  // Restore token from sessionStorage, but treat "null" as null
+  const [token, setToken] = useState(() => {
+    const stored = sessionStorage.getItem('token');
+    return stored && stored !== "null" ? stored : null;
+  });
   const [activeTab, setActiveTab] = useState("home");
+
+  useEffect(() => {
+    if (token) {
+      sessionStorage.setItem('token', token);
+    } else {
+      sessionStorage.removeItem('token');
+    }
+  }, [token]);
+
+  if (!token) {
+    return <Login setToken={setToken} />;
+  }
 
   const renderContent = () => {
     if (activeTab === "home") return <HomeComponent />;
