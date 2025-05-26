@@ -1,23 +1,37 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useState } from "react";
+import "./App.css";
+
+const HomeComponent = () => <div className="content">🏠 This is the Home component.</div>;
+const SettingsComponent = () => <div className="content">⚙️ This is the Settings component.</div>;
 
 function App() {
+  const [activeTab, setActiveTab] = useState("home");
+
+  const renderContent = () => {
+    if (activeTab === "home") return <HomeComponent />;
+    if (activeTab === "settings") return <SettingsComponent />;
+    return null;
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
+    <div className="container">
+      <div className="sidebar">
+        <h1>Yoa Analytics</h1>
+        <button
+          className={`tab-button ${activeTab === "home" ? "active" : ""}`}
+          onClick={() => setActiveTab("home")}
         >
-          Learn React
-        </a>
-      </header>
+          🤗 Database
+        </button>
+        <button
+          className={`tab-button ${activeTab === "settings" ? "active" : ""}`}
+          onClick={() => setActiveTab("settings")}
+        >
+          📆 InApp Events
+        </button>
+      </div>
+      <div className="divider"></div>
+      <div className="main-content">{renderContent()}</div>
     </div>
   );
 }
