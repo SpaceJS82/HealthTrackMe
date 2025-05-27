@@ -332,4 +332,20 @@ class SharingManager {
         }
     }
 
+
+    public func sendPoke(to user: PersonData, message: String, completion: @escaping (Bool) -> Void) {
+        AuthManager.shared.sendPoke(toUserId: user.id, message: message) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    print("✅ Poke sent to \(user.username)")
+                    completion(true)
+                case .failure(let error):
+                    print("❌ Failed to send poke:", error)
+                    completion(false)
+                }
+            }
+        }
+    }
+
 }

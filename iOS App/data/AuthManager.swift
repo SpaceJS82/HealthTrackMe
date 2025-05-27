@@ -5,12 +5,13 @@
 //  Created by Luka Verč on 16. 5. 25.
 //
 
-import Foundation
+import UserNotifications
+import UIKit
 
 class AuthManager {
     static let shared = AuthManager()
 
-    public let baseURL = /*"http://localhost:1004"*/"https://api.getyoa.app/yoaapi"
+    public let baseURL = /*"http://192.168.121.139:1004"*/"https://api.getyoa.app/yoaapi"
     private let tokenKey = "jwtToken"
 
     private var token: String? {
@@ -74,20 +75,29 @@ class AuthManager {
             case .success(let json):
                 if let token = json["token"] as? String {
                     self.token = token
+
                     if let user = json["user"] as? [String: Any],
                        let name = user["name"] as? String {
                         UserData.shared.fullName = name
                     }
+
+                    // ✅ Upload APNs token if available
+                    if let apnsToken = UserDefaults.standard.string(forKey: "apnsToken") {
+                        self.uploadDeviceToken(token: apnsToken)
+                    }
+
                     self.flushLoginQueue(with: .success(()))
                 } else {
                     self.clearCredentials()
                     self.flushLoginQueue(with: .failure(NSError(domain: "NoToken", code: 401)))
                 }
+
             case .failure(let error as NSError):
                 if error.code == 401 || error.code == 403 {
                     self.clearCredentials()
                 }
                 self.flushLoginQueue(with: .failure(error))
+
             case .failure(let error):
                 self.flushLoginQueue(with: .failure(error))
             }
@@ -109,6 +119,26 @@ class AuthManager {
                     if let user = json["user"] as? [String: Any],
                        let name = user["name"] as? String {
                         UserData.shared.fullName = name
+                    }
+
+                    // ✅ Upload APNs token if available
+                    if let apnsToken = UserDefaults.standard.string(forKey: "apnsToken") {
+                        self.uploadDeviceToken(token: apnsToken)
+                    }
+
+                    // Ask for push notification permission
+                    UNUserNotificationCenter.current().getNotificationSettings { settings in
+                        if settings.authorizationStatus == .notDetermined {
+                            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+                                if granted {
+                                    DispatchQueue.main.async {
+                                        UIApplication.shared.registerForRemoteNotifications()
+                                    }
+                                } else {
+                                    print("🔕 Push permission denied or error: \(error?.localizedDescription ?? "None")")
+                                }
+                            }
+                        }
                     }
 
                     completion(true)
@@ -145,6 +175,12 @@ class AuthManager {
     }
 
     func signOut() {
+        if let apnsToken = UserDefaults.standard.string(forKey: "apnsToken") {
+            removeDeviceToken(token: apnsToken) { success in
+                print(success ? "✅ Device token removed from server" : "❌ Failed to remove token from server")
+            }
+        }
+
         token = nil
         hasCreatedAccount = false
         savedUsername = nil
@@ -824,5 +860,87 @@ class AuthManager {
                 completion(.failure(error))
             }
         }
+    }
+
+
+    public func uploadDeviceToken(token: String) {
+        guard let url = URL(string: baseURL + "/notifications/register-device-token"),
+              let jwt = self.token else {
+            print("❌ Missing token or bad URL")
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body = ["token": token]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("❌ Upload error: \(error)")
+            } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                print("✅ Device token uploaded")
+            } else {
+                print("⚠️ Upload failed:", response.debugDescription)
+            }
+        }.resume()
+    }
+
+
+    func sendPoke(toUserId: Int, message: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        ensureAuthenticated { result in
+            switch result {
+            case .success:
+                let body: [String: Any] = [
+                    "toUserId": toUserId,
+                    "message": message
+                ]
+                self.postRequest(endpoint: "/notifications/poke", body: body) { result in
+                    switch result {
+                    case .success:
+                        completion(.success(()))
+                    case .failure(let error):
+                        completion(.failure(error))
+                    }
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func removeDeviceToken(token: String, completion: @escaping (Bool) -> Void) {
+        guard let url = URL(string: baseURL + "/notifications/remove-device-token") else {
+            completion(false)
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if let tokenValue = self.token {
+            request.addValue("Bearer \(tokenValue)", forHTTPHeaderField: "Authorization")
+        }
+
+        let body: [String: Any] = ["token": token]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        URLSession.shared.dataTask(with: request) { _, response, error in
+            if let error = error {
+                print("❌ Error removing token:", error)
+                completion(false)
+                return
+            }
+
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                completion(true)
+            } else {
+                completion(false)
+            }
+        }.resume()
     }
 }
