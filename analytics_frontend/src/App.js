@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import Login from "./components/login";
+import Dashboard from "./components/SettingsComponent"
 import "./App.css";
 
 const HomeComponent = () => <div className="content">🏠 This is the Home component.</div>;
-const SettingsComponent = () => <div className="content">⚙️ This is the Settings component.</div>;
 
 function App() {
   // Restore token from sessionStorage, but treat "null" as null
@@ -27,7 +27,7 @@ function App() {
 
   const renderContent = () => {
     if (activeTab === "home") return <HomeComponent />;
-    if (activeTab === "settings") return <SettingsComponent />;
+    if (activeTab === "settings") return <Dashboard />;
     return null;
   };
 
