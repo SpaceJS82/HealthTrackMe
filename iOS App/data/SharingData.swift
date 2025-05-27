@@ -89,10 +89,26 @@ extension SharingManager {
                     return "No data".localized()
                 }
             } else if self.type == .healthAchievement {
-                if let metric = self.metaData?["score"] as? Double {
-                    return "\(Int(metric * 100))/100"
+                let healthType = self.metaData?["metricType"] as? String ?? "sleep"
+                if healthType == "sleep" || healthType == "stress" {
+                    if let metric = self.metaData?["score"] as? Double {
+                        return "\(Int(metric * 100))/100"
+                    } else {
+                        return "No data".localized()
+                    }
                 } else {
-                    return "No data".localized()
+                    let unit = self.metaData?["unit"] as? String ?? ""
+                    if let value = self.metaData?["value"] as? Double {
+                        if unit == "time" {
+                            return value.toHoursMinutesString()
+                        } else if unit == "double" {
+                            return "\(value.rounded(toPlaces: 1)))"
+                        } else {
+                            return "No unit".localized()
+                        }
+                    } else {
+                        return "No data".localized()
+                    }
                 }
             } else {
                 return ""

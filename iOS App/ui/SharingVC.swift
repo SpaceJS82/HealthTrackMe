@@ -42,6 +42,12 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
             self.refresh()
         }
 
+        if !UserData.shared.sharingExplainerShown {
+            self.present(ThemeNavigationViewController(rootViewController: ExplainerVC(icon: SFSymbol(systemName: "person.2.fill"), mainText: "Say hello to Sharing".localized(), subText: "Connect and share your health journey with firends, from workouts to sleep scores... Motivate each other, celebrate progress, and stay on track together.".localized(), color: .customOrange) {
+                UserData.shared.sharingExplainerShown = true
+            }), animated: true)
+        }
+
     }
 
     override func viewDidLayoutSubviews() {
@@ -598,9 +604,9 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
                     self.rightSideReactionBadge.text = data.reactions.last?.content
                     self.leftSideReactionBadge.isHidden = true
                 } else {
-                    self.rightSideReactionBadge.isHidden = false
-                    self.rightSideReactionBadge.text = data.reactions.last?.content
                     self.leftSideReactionBadge.isHidden = false
+                    self.leftSideReactionBadge.text = data.reactions.last?.content
+                    self.rightSideReactionBadge.isHidden = false
                     self.rightSideReactionBadge.text = String(data.reactions.count - 1) + "+"
                 }
 
@@ -613,7 +619,7 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
                     self.titleView.text = data.getMainText()
 
                     if let workout = data.getWorkout() {
-                        self.subTitleView.text = workout.getWorkoutTitle()
+                        self.subTitleView.text = workout.getCustomTitle()
                     }
                 } else if data.type == .healthAchievement {
                     let healthType = data.metaData?["metricType"] as? String ?? "sleep"
@@ -625,6 +631,10 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
                         self.messageView.text = "_NAME_ shared their stress score".localized().replacingOccurrences(of: "_NAME_", with: data.user?.name ?? "Unknown")
                         self.imageView.tintColor = .customBlue
                         self.titleView.textColor = .customBlue
+                    } else if healthType == "graphData" {
+                        self.messageView.text = "_NAME_ shared a new health metric".localized().replacingOccurrences(of: "_NAME_", with: data.user?.name ?? "Unknown")
+                        self.imageView.tintColor = .customOrange
+                        self.titleView.textColor = .customOrange
                     }
 
                     self.titleView.text = data.getMainText()
@@ -918,9 +928,45 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
                     self.viewController?.present(alert, animated: true)
                 }
 
+                let messageAction = UIAction(title: "Send a message".localized()) { _ in
+                    guard let data = self.data, let viewController = self.viewController else { return }
+
+                    let alert = UIAlertController(
+                        title: "Send a message".localized(),
+                        message: "Will send a notification to them, if they have notifications turned on.".localized(),
+                        preferredStyle: .alert
+                    )
+
+                    alert.addTextField {
+                        $0.placeholder = "Message".localized()
+                    }
+
+                    alert.addAction(UIAlertAction(title: "Cancel".localized(), style: .cancel))
+
+                    alert.addAction(UIAlertAction(title: "Send".localized(), style: .default, handler: { _ in
+                        let message = alert.textFields?[0].text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+                        guard message.count >= 1 else {
+                            return
+                        }
+
+                        SharingManager.shared.sendPoke(to: data, message: message) { success in
+                            DispatchQueue.main.async {
+                                if success {
+                                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                                } else {
+                                    SharingManager.shared.displayError(error: .unknown, on: viewController)
+                                }
+                            }
+                        }
+                    }))
+                    alert.view.tintColor = .customBlue
+                    viewController.present(alert, animated: true)
+                }
+
                 var actions: [UIMenuElement] = [copyUsernameAction]
                 if !data.isMe {
-                    actions.append(removeAction)
+                    actions.append(contentsOf: [messageAction, removeAction])
                 }
 
                 return UIMenu(children: actions)

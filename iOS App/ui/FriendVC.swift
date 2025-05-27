@@ -28,7 +28,7 @@ class FriendVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UI
         self.init()
         self.data = friend
 
-        self.navigationTitleLabel.text = ((data?.isMe) != nil) ? "Me".localized() : data?.name
+        self.navigationTitleLabel.text = (friend.isMe) ? "Me".localized() : data?.name
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -53,16 +53,23 @@ class FriendVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UI
         navigationTitleLabel.sizeToFit()
         self.navigationItem.titleView = navigationTitleLabel
 
-        self.navigationItem.leftBarButtonItem = self.getNavigationItem(image: "chevron.left", target: self, action: #selector(onBack), backgroundColor: .secondaryBackground)
+        self.navigationItem.leftBarButtonItems = [
+            self.getNavigationItem(image: "chevron.left", target: self, action: #selector(onBack), backgroundColor: .groupedSecondaryBackground)
+        ]
 
-        self.settingsButton = self.getNavigationItem(image: "slider.horizontal.3", target: nil, action: nil, backgroundColor: .secondaryBackground)
-        self.navigationItem.rightBarButtonItem = self.settingsButton
+        self.settingsButton = self.getNavigationItem(image: "slider.horizontal.3", target: nil, action: nil, backgroundColor: .groupedSecondaryBackground)
+        if self.data.isMe {
+            self.navigationItem.rightBarButtonItems = [self.settingsButton]
+        } else {
+            self.navigationItem.rightBarButtonItems = [self.settingsButton, self.getNavigationItem(image: "bubble.fill", target: self, action: #selector(onPoke), backgroundColor: .groupedSecondaryBackground)]
+        }
         (self.settingsButton.customView as? UIButton)?.showsMenuAsPrimaryAction = true
 
 
         //Background
-        view.backgroundColor = .background
+        view.backgroundColor = .groupedBackground
 
+        self.headerView.friendsVC = self
 
         //Tableview
         tableView.register(ActivityCell.self, forCellReuseIdentifier: "cell")
@@ -154,16 +161,19 @@ class FriendVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UI
                         }),
 
                         // Change Username
-                        UIAction(title: "Change username".localized(), handler: { _ in
-                            let alert = UIAlertController(title: "Change username".localized(), message: nil, preferredStyle: .alert)
-                            alert.addTextField { $0.placeholder = "Enter new username".localized() }
+                        UIAction(title: "Change email".localized(), handler: { _ in
+                            let alert = UIAlertController(title: "Change email".localized(), message: nil, preferredStyle: .alert)
+                            alert.addTextField { $0.placeholder = "Enter new email".localized() }
                             alert.addAction(UIAlertAction(title: "Cancel".localized(), style: .cancel))
                             alert.addAction(UIAlertAction(title: "Save".localized(), style: .default, handler: { _ in
                                 let newUsername = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                                if newUsername.count < 2 {
+
+                                let emailRegex = "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+                                guard NSPredicate(format: "SELF MATCHES %@", emailRegex).evaluate(with: newUsername) else {
                                     self.showValidationError()
                                     return
                                 }
+
                                 AuthManager.shared.changeUsername(to: newUsername) { result in
                                     DispatchQueue.main.async {
                                         switch result {
@@ -295,6 +305,41 @@ class FriendVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UI
         self.navigationController?.popViewController(animated: true)
     }
 
+    @objc
+    private func onPoke() {
+        let alert = UIAlertController(
+            title: "Send a message".localized(),
+            message: "Will send a notification to them, if they have notifications turned on.".localized(),
+            preferredStyle: .alert
+        )
+
+        alert.addTextField {
+            $0.placeholder = "Message".localized()
+        }
+
+        alert.addAction(UIAlertAction(title: "Cancel".localized(), style: .cancel))
+
+        alert.addAction(UIAlertAction(title: "Send".localized(), style: .default, handler: { _ in
+            let message = alert.textFields?[0].text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+            guard message.count >= 1 else {
+                return
+            }
+
+            SharingManager.shared.sendPoke(to: self.data, message: message) { success in
+                DispatchQueue.main.async {
+                    if success {
+                        UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    } else {
+                        SharingManager.shared.displayError(error: .unknown, on: self)
+                    }
+                }
+            }
+        }))
+        alert.view.tintColor = .customBlue
+        self.present(alert, animated: true)
+    }
+
     //Scrollview delegates
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         if -self.tableView.contentOffset.y + 40 < view.safeAreaInsets.top - 50 {
@@ -340,6 +385,7 @@ class FriendVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UI
         //UI
         private let iconView = UILabel()
         private let nameView = UILabel()
+        public var friendsVC: FriendVC!
 
         private let lastNightTitle = UILabel()
         private let ringBackView = UIView()
@@ -349,6 +395,7 @@ class FriendVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UI
         private let characterView = CharacterView(frame: .zero)
 
         private let thisWeekLabel = UILabel()
+        private let thisWeekUploadButton = UIButton()
         private let thisWeekTable = MyHStack()
 
         private let workoutsLabel = UILabel()
@@ -358,22 +405,27 @@ class FriendVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UI
 
             iconView.frame = CGRect(x: (self.frame.width - 75) / 2, y: 0, width: 75, height: 75)
             iconView.layer.cornerRadius = 75 / 2
+            iconView.setDefaultShadow()
             nameView.frame = CGRect(x: 15, y: iconView.frame.maxY + 10, width: self.frame.width - 30, height: 25)
 
             lastNightTitle.frame = CGRect(x: 15, y: nameView.frame.maxY + 30, width: self.frame.width - 30, height: 20)
 
             ringBackView.frame = CGRect(x: 15, y: lastNightTitle.frame.maxY + 10, width: (self.frame.width - 40) / 2, height: 100)
             ringBackView.layer.cornerRadius = 24
+            ringBackView.setDefaultShadow()
             ringView.frame = CGRect(x: (ringBackView.frame.width - 75) / 2, y: (ringBackView.frame.height - 75) / 2, width: 75, height: 75)
             ringIconView.frame = CGRect(x: (ringView.frame.width - 30) / 2, y: (ringView.frame.height - 30) / 2, width: 30, height: 30)
 
             characterBackView.frame = CGRect(x: ringBackView.frame.maxX + 10, y: lastNightTitle.frame.maxY + 10, width: (self.frame.width - 40) / 2, height: 100)
             ringBackView.layer.cornerRadius = 24
+            characterBackView.setDefaultShadow()
             characterView.frame = CGRect(x: (ringBackView.frame.width - 85) / 2, y: (ringBackView.frame.height - 85) / 2, width: 85, height: 85)
 
             thisWeekLabel.frame = CGRect(x: 15, y: characterBackView.frame.maxY + 30, width: self.frame.width - 30, height: 20)
+            thisWeekUploadButton.frame = CGRect(x: 15, y: characterBackView.frame.maxY + 30, width: self.frame.width - 30, height: 20)
             thisWeekTable.frame = CGRect(x: 15, y: thisWeekLabel.frame.maxY + 10, width: self.frame.width - 30, height: 100)
             thisWeekTable.layer.cornerRadius = 24
+            thisWeekTable.setDefaultShadow()
 
             workoutsLabel.frame = CGRect(x: 15, y: self.frame.height - 50, width: self.frame.width - 30, height: 40)
 
@@ -382,7 +434,7 @@ class FriendVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UI
         override init(frame: CGRect) {
             super.init(frame: frame)
 
-            iconView.backgroundColor = .secondaryBackground
+            iconView.backgroundColor = .groupedSecondaryBackground
             iconView.clipsToBounds = true
             iconView.textAlignment = .center
             iconView.textColor = .title
@@ -401,7 +453,7 @@ class FriendVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UI
             lastNightTitle.font = .roundedFont(ofSize: 17, weight: .semibold)
             self.addSubview(lastNightTitle)
 
-            ringBackView.backgroundColor = .secondaryBackground
+            ringBackView.backgroundColor = .groupedSecondaryBackground
             ringBackView.layer.cornerRadius = 24
             ringBackView.layer.cornerCurve = .continuous
             self.addSubview(ringBackView)
@@ -415,7 +467,7 @@ class FriendVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UI
             ringIconView.tintColor = .title
             ringView.addSubview(ringIconView)
 
-            characterBackView.backgroundColor = .secondaryBackground
+            characterBackView.backgroundColor = .groupedSecondaryBackground
             characterBackView.layer.cornerRadius = 24
             characterBackView.layer.cornerCurve = .continuous
             self.addSubview(characterBackView)
@@ -430,8 +482,53 @@ class FriendVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UI
             thisWeekLabel.font = .roundedFont(ofSize: 17, weight: .semibold)
             self.addSubview(thisWeekLabel)
 
+            thisWeekUploadButton.isHidden = true
+            thisWeekUploadButton.setTitle("Upload missing days", for: .normal)
+            thisWeekUploadButton.setTitleColor(.customOrange, for: .normal)
+            thisWeekUploadButton.titleLabel?.font = .roundedFont(ofSize: 17, weight: .semibold)
+            thisWeekUploadButton.contentHorizontalAlignment = .right
+            thisWeekUploadButton.addAction(UIAction(handler: { _ in
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                let calendar = Calendar.current
+                var utcCalendar = Calendar(identifier: .gregorian)
+                utcCalendar.timeZone = TimeZone(secondsFromGMT: 0)!
+                let todayUTC = utcCalendar.startOfDay(for: Date())
+
+                let dates = Array((0..<7).compactMap { calendar.date(byAdding: .day, value: -$0, to: todayUTC) }.reversed())
+                var isError = false
+
+                func processNext(_ index: Int) {
+                    guard index < dates.count else {
+                        if isError {
+                            SharingManager.shared.displayError(error: .unknown, on: self.friendsVC)
+                        } else {
+                            self.friendsVC.refresh()
+                            UINotificationFeedbackGenerator().notificationOccurred(.success)
+                        }
+                        return
+                    }
+
+                    let date = dates[index]
+
+                    HealthData.shared.getQualityOfSleep(for: date) { score in
+                        SharingManager.shared.uploadSleepScore(value: score, date: date) { success in
+                            if success {
+                                print("✅ Uploaded score \(score) for \(date)")
+                            } else {
+                                isError = true
+                            }
+
+                            processNext(index + 1)
+                        }
+                    }
+                }
+
+                processNext(0)
+            }), for: .touchUpInside)
+            self.addSubview(thisWeekUploadButton)
+
             thisWeekTable.layer.cornerCurve = .continuous
-            thisWeekTable.backgroundColor = .secondaryBackground
+            thisWeekTable.backgroundColor = .groupedSecondaryBackground
             self.addSubview(thisWeekTable)
 
 
@@ -468,6 +565,8 @@ class FriendVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UI
                     .size(CGSize(width: (self.thisWeekTable.frame.width - 90) / 7))
                     .padding(UIEdgeInsets(left: index == 0 ? 15 : 0, right: index == 6 ? 15 : 10))
             }))
+
+            self.thisWeekUploadButton.isHidden = !with.isMe || (with.isMe && data.filter({$0.value > 0}).count >= 7)
 
         }
 
@@ -555,6 +654,7 @@ class FriendVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UI
 
             backView.frame = CGRect(x: 15, y: 0, width: self.frame.width - 30, height: self.frame.height - 10)
             backView.layer.cornerRadius = 24
+            backView.setDefaultShadow()
 
             iconView.frame = CGRect(x: 20, y: 20, width: 35, height: 35)
             titleView.frame = CGRect(x: 75, y: 16, width: backView.frame.width - 90, height: 22)
@@ -592,7 +692,7 @@ class FriendVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UI
 
             self.event = with
 
-            backView.backgroundColor = .secondaryBackground
+            backView.backgroundColor = .groupedSecondaryBackground
             iconView.tintColor = .title
             titleView.textColor = .title
             descriptionView.textColor = .secondaryText
