@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const db = require('../../db/db');
 const { authenticateToken } = require('../auth');
 
 // Helper to check admin status

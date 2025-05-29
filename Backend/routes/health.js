@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('./db');
+const db = require('../db/db');
 const { authenticateToken } = require('./auth');
 
 router.post('/upload-health-metric', authenticateToken, async (req, res) => {

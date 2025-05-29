@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const db = require('./db');
+const db = require('../db/db');
 const { authenticateToken } = require('./auth');
 
 // Pošlji povabilo
 router.post('/', authenticateToken, async (req, res) => {
-  const senderId = req.user.id;
+  const sender = req.user;
   const { username } = req.body;
   console.log("🔔 Invite endpoint HIT");
 
@@ -14,10 +14,7 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 
   try {
-    const receiver = await db('user')
-        .select('iduser')
-        .where({ username })
-        .first();
+    const receiver = await db('user').where({ username }).first();
 
     if (!receiver) {
       return res.status(404).json({ error: "Receiver not found" });
@@ -25,20 +22,32 @@ router.post('/', authenticateToken, async (req, res) => {
 
     const receiverId = receiver.iduser;
 
-    if (senderId === receiverId) {
+    if (sender.id === receiverId) {
       return res.status(400).json({ error: "Cannot invite yourself" });
     }
 
+    const existingInvite = await db('friend_invite')
+        .where({ sender_iduser: sender.id, receiver_iduser: receiverId })
+        .first();
+
+    if (existingInvite) {
+      console.log("🔁 Invite already exists");
+      return res.status(200).json({
+        message: "Invite already exists",
+        success: true,
+        alreadyExists: true
+      });
+    }
+
     await db('friend_invite').insert({
-      sender_iduser: senderId,
+      sender_iduser: sender.id,
       receiver_iduser: receiverId,
       date: new Date()
     });
 
-    // ✅ Return proper JSON
     res.status(201).json({ message: "Invite sent", success: true });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Error sending invite:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -76,7 +85,7 @@ router.get('/received', authenticateToken, async (req, res) => {
   }
 });
 
-// Sprejmi povabilo (in ga izbriši, ter ustvari prijateljstvo)
+// Sprejmi povabilo (in ga izbrisi, ter ustvari prijateljstvo)
 router.post('/:id/accept', authenticateToken, async (req, res) => {
   const inviteId = parseInt(req.params.id);
 
@@ -107,8 +116,7 @@ router.post('/:id/accept', authenticateToken, async (req, res) => {
   }
 });
 
-
-// Zavrni (izbriši) povabilo
+// Zavrni (izbrisi) povabilo
 router.delete('/:id', authenticateToken, async (req, res) => {
   const inviteId = parseInt(req.params.id);
 
@@ -131,6 +139,5 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Error deleting invite' });
   }
 });
-
 
 module.exports = router;

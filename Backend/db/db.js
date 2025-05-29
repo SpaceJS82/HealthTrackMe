@@ -1,6 +1,6 @@
 // db.js
 const knex = require('knex');
-const config = require('./knexfile.js');
+const config = require('../routes/knexfile.js');
 
 // Determine the environment, defaulting to 'development'
 const env = process.env.NODE_ENV || 'development';

@@ -1,7 +1,7 @@
 // routes/friends.js
 const express = require('express');
 const router = express.Router();
-const db = require('./db');
+const db = require('../db/db');
 const { authenticateToken } = require('./auth');
 
 // GET /friends/get-friends
@@ -66,18 +66,18 @@ router.get('/get-friend-data', authenticateToken, async (req, res) => {
 
   try {
     const isFriend = await db('friendship')
-      .where({
-        user_iduser: userId,
-        friend_iduser: friendId
-      })
-      .first();
+        .where({
+          user_iduser: userId,
+          friend_iduser: friendId
+        })
+        .first();
 
     if (!isFriend) return res.status(403).send('Not your friend');
 
     const friendData = await db('user')
-      .where({ iduser: friendId })
-      .select('iduser', 'username') 
-      .first();
+        .where({ iduser: friendId })
+        .select('iduser', 'username')
+        .first();
 
     res.json(friendData);
   } catch (err) {
@@ -98,9 +98,9 @@ router.delete('/delete-friendship', authenticateToken, async (req, res) => {
   try {
     await db.transaction(async trx => {
       await trx('friendship')
-        .where({ user_iduser: userId, friend_iduser: friendId })
-        .orWhere({ user_iduser: friendId, friend_iduser: userId })
-        .del();
+          .where({ user_iduser: userId, friend_iduser: friendId })
+          .orWhere({ user_iduser: friendId, friend_iduser: userId })
+          .del();
     });
 
     res.json({ error: null });

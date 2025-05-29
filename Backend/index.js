@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const db = require('./routes/db'); // Knex instance
+const db = require('./db/db'); // Knex instance
 const path = require('path');
 const cors = require('cors');
 
@@ -15,6 +15,7 @@ const healthRoutes = require('./routes/health');
 const profileRoutes = require('./routes/profile');
 const inviteRoutes = require('./routes/invites');
 const {authenticateToken} = require("./routes/auth");
+const notificationRoutes = require('./routes/notifications');
 const userAnalyticsRoutes = require('./routes/analytics/users');
 const eventAnalyticsRoutes = require('./routes/analytics/events');
 const friendshipAnalyticsRoutes = require('./routes/analytics/friendship');
