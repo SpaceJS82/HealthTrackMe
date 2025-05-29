@@ -28,7 +28,7 @@ class FriendVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UI
         self.init()
         self.data = friend
 
-        self.navigationTitleLabel.text = (friend.isMe) ? "Me".localized() : data?.name
+        self.navigationTitleLabel.text = friend.isMe ? "Me".localized() : friend.name
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -137,11 +137,11 @@ class FriendVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UI
                             alert.addTextField { $0.placeholder = "Enter new name".localized() }
                             alert.addAction(UIAlertAction(title: "Cancel".localized(), style: .cancel))
                             alert.addAction(UIAlertAction(title: "Save".localized(), style: .default, handler: { _ in
-                                let newName = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                                if newName.count < 2 {
+                                guard let newName = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines), newName.count >= 2 else {
                                     self.showValidationError()
                                     return
                                 }
+
                                 AuthManager.shared.changeName(to: newName) { result in
                                     DispatchQueue.main.async {
                                         switch result {
@@ -711,6 +711,9 @@ class FriendVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UI
                 } else if healthType == "stress" {
                     self.titleView.text = "Stress score".localized()
                     self.iconView.tintColor = .customBlue
+                } else if healthType == "graphData" {
+                    self.titleView.text = with.metaData?["metricTitle"] as? String
+                    self.iconView.tintColor = .customOrange
                 }
 
                 self.descriptionView.text = with.getMainText()

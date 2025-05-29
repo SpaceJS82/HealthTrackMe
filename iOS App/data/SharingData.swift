@@ -102,7 +102,7 @@ extension SharingManager {
                         if unit == "time" {
                             return value.toHoursMinutesString()
                         } else if unit == "double" {
-                            return "\(value.rounded(toPlaces: 1)))"
+                            return "\(value.rounded(toPlaces: 1))"
                         } else {
                             return "No unit".localized()
                         }

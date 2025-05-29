@@ -11,7 +11,7 @@ import UIKit
 class AuthManager {
     static let shared = AuthManager()
 
-    public let baseURL = /*"http://192.168.121.139:1004"*/"https://api.getyoa.app/yoaapi"
+    public let baseURL = /*"http://192.168.1.70:1004"*/"https://api.getyoa.app/yoaapi"
     private let tokenKey = "jwtToken"
 
     private var token: String? {
@@ -940,6 +940,46 @@ class AuthManager {
                 completion(true)
             } else {
                 completion(false)
+            }
+        }.resume()
+    }
+
+
+    func logInAppEvent(title: String, metadata: [String: Any]) {
+        guard let url = URL(string: baseURL + "/analytics/inappevents/upload") else {
+            print("❌ Invalid URL")
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "title": title,
+            "metadata": metadata,
+            "secret_key": "yoa_inappevent_tracking"
+        ]
+
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
+        } catch {
+            print("❌ Failed to encode log body: \(error)")
+            return
+        }
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("❌ Failed to log event: \(error)")
+                return
+            }
+
+            if let httpResponse = response as? HTTPURLResponse {
+                if httpResponse.statusCode == 201 {
+                    print("✅ In-app event logged")
+                } else {
+                    print("⚠️ Unexpected response code: \(httpResponse.statusCode)")
+                }
             }
         }.resume()
     }

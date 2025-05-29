@@ -43,7 +43,7 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
         }
 
         if !UserData.shared.sharingExplainerShown {
-            self.present(ThemeNavigationViewController(rootViewController: ExplainerVC(icon: SFSymbol(systemName: "person.2.fill"), mainText: "Say hello to Sharing".localized(), subText: "Connect and share your health journey with firends, from workouts to sleep scores... Motivate each other, celebrate progress, and stay on track together.".localized(), color: .customOrange) {
+            self.present(ThemeNavigationViewController(rootViewController: ExplainerVC(icon: SFSymbol(systemName: "person.2.fill"), mainText: "Say hello to Sharing".localized(), subText: "Connect and share your health journey with friends, from workouts to sleep scores... Motivate each other, celebrate progress, and stay on track together.".localized(), color: .customOrange) {
                 UserData.shared.sharingExplainerShown = true
             }), animated: true)
         }
@@ -622,6 +622,15 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
                         self.subTitleView.text = workout.getCustomTitle()
                     }
                 } else if data.type == .healthAchievement {
+
+                    self.titleView.text = data.getMainText()
+
+                    self.imageView.image = data.getIcon()
+
+                    let formatter = DateFormatter()
+                    formatter.dateFormat = "EEEE"
+                    self.subTitleView.text = formatter.string(from: data.date)
+
                     let healthType = data.metaData?["metricType"] as? String ?? "sleep"
                     if healthType == "sleep" {
                         self.messageView.text = "_NAME_ shared their sleep quality".localized().replacingOccurrences(of: "_NAME_", with: data.user?.name ?? "Unknown")
@@ -635,15 +644,9 @@ class SharingVC: GradientViewController, UITableViewDelegate, UITableViewDataSou
                         self.messageView.text = "_NAME_ shared a new health metric".localized().replacingOccurrences(of: "_NAME_", with: data.user?.name ?? "Unknown")
                         self.imageView.tintColor = .customOrange
                         self.titleView.textColor = .customOrange
+                        self.subTitleView.text = data.metaData?["metricTitle"] as? String
                     }
 
-                    self.titleView.text = data.getMainText()
-
-                    self.imageView.image = data.getIcon()
-
-                    let formatter = DateFormatter()
-                    formatter.dateFormat = "EEEE"
-                    self.subTitleView.text = formatter.string(from: data.date)
                 }
             }
 
