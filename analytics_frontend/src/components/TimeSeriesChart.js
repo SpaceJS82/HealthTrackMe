@@ -1,12 +1,10 @@
-// components/TimeSeriesChart.jsx
 import React from 'react';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 
 function formatDate(dateStr, granularity) {
   if (granularity === 'monthly') {
-    // Show only year and month
     const [year, month] = dateStr.split('-');
     return `${year}-${month}`;
   }
@@ -15,14 +13,18 @@ function formatDate(dateStr, granularity) {
     case 'daily':
       return date.toLocaleDateString();
     case 'weekly':
-  return dateStr.startsWith('20') ? dateStr : `Week of ${date.toLocaleDateString()}`;
+      return dateStr.startsWith('20') ? dateStr : `Week of ${date.toLocaleDateString()}`;
     default:
       return date.toISOString();
   }
 }
 
-export default function TimeSeriesChart({ data, granularity = 'daily', title = 'New Users Over Time' }) {
-  // Ensure data is sorted (optional but often helpful)
+export default function TimeSeriesChart({
+  data,
+  granularity = 'daily',
+  title = 'New Users Over Time',
+  lines = [{ dataKey: 'count', color: '#8884d8', name: 'Count' }]
+}) {
   const sortedData = [...data].sort((a, b) => new Date(a.date) - new Date(b.date));
 
   return (
@@ -31,15 +33,25 @@ export default function TimeSeriesChart({ data, granularity = 'daily', title = '
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={sortedData}>
           <CartesianGrid stroke="#ccc" />
-          <XAxis 
+          <XAxis
             dataKey="date"
             tickFormatter={(date) => formatDate(date, granularity)}
           />
           <YAxis />
-          <Tooltip 
+          <Tooltip
             labelFormatter={(label) => formatDate(label, granularity)}
           />
-          <Line type="monotone" dataKey="count" stroke="#8884d8" />
+          <Legend />
+          {lines.map(line => (
+            <Line
+              key={line.dataKey}
+              type="monotone"
+              dataKey={line.dataKey}
+              stroke={line.color}
+              name={line.name}
+              dot={false}
+            />
+          ))}
         </LineChart>
       </ResponsiveContainer>
     </div>

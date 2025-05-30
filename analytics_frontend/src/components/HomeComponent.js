@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import TimeSeriesChart from './TimeSeriesChart';
 import MultiLineEventChart from './MultiEventChart';
+import ReactionsAnalytics from './ReactionsAnalytics';
+import FriendshipAnalytics from './FriendshipAnalytics';
+import EventsUserAnalytics from './EventsUserAnalytics';
 import './home.css';
 
 
@@ -144,130 +147,111 @@ function fetchUserDataByRange() {
   // Before your return statement in Dashboard:
   console.log('Grouped event data:', groupEventsByDateAndType(eventChartData, eventChartGranularity));
   return (
-  <div style={{ padding: 32, maxWidth: 900, margin: "0 auto" }}>
-    {/* New Users Filter Row */}
-    <div style={{ marginBottom: 24 }}>
-      <form style={{ display: "flex", gap: 16, alignItems: "flex-end", marginBottom: 16 }}>
-        <div>
-          <label>Show:<br />
-            <select
-              value={selected}
-              onChange={e => setSelected(e.target.value)}
-              style={{ minWidth: 160 }}
-            >
-              <option value="daily">Daily New Users</option>
-              <option value="weekly">Weekly New Users</option>
-              <option value="monthly">Monthly New Users</option>
-            </select>
-          </label>
+    <div style={{ padding: 32, maxWidth: 1200, margin: "0 auto" }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {/* New Users Filter and Chart */}
+        <div style={styles.card}>
+          <form style={{ display: "flex", gap: 16, alignItems: "flex-end", marginBottom: 16 }}>
+            <div>
+              <label>Show:<br />
+                <select value={selected} onChange={e => setSelected(e.target.value)} style={{ minWidth: 160 }}>
+                  <option value="daily">Daily New Users</option>
+                  <option value="weekly">Weekly New Users</option>
+                  <option value="monthly">Monthly New Users</option>
+                </select>
+              </label>
+            </div>
+            <div>
+              <label>Start date:<br />
+                <input type="date" value={userStartDate} onChange={e => setUserStartDate(e.target.value)} />
+              </label>
+            </div>
+            <div>
+              <label>End date:<br />
+                <input type="date" value={userEndDate} onChange={e => setUserEndDate(e.target.value)} />
+              </label>
+            </div>
+            <div>
+              <button type="button" onClick={fetchUserDataByRange} disabled={!userStartDate || !userEndDate}>
+                Apply
+              </button>
+            </div>
+          </form>
+          {chartData.length > 0 && (
+            <TimeSeriesChart data={chartData} granularity={granularity} title={title} />
+          )}
         </div>
-        <div>
-          <label>Start date:<br />
-            <input
-              type="date"
-              value={userStartDate}
-              onChange={e => setUserStartDate(e.target.value)}
-            />
-          </label>
-        </div>
-        <div>
-          <label>End date:<br />
-            <input
-              type="date"
-              value={userEndDate}
-              onChange={e => setUserEndDate(e.target.value)}
-            />
-          </label>
-        </div>
-        <div>
-          <button
-            type="button"
-            onClick={fetchUserDataByRange}
-            disabled={!userStartDate || !userEndDate}
-          >
-            Apply
-          </button>
-        </div>
-      </form>
-      {chartData.length > 0 && (
-        <TimeSeriesChart 
-          data={chartData}
-          granularity={granularity}
-          title={title}
-        />
-      )}
-    </div>
 
-    {/* Avg Friends Card Row */}
-    <div style={{
-      border: '1px solid #ccc',
-      borderRadius: 8,
-      padding: 16,
-      width: 220,
-      textAlign: 'center',
-      background: '#fafafa',
-      margin: "32px auto"
-    }}>
-      <h3 style={{ margin: 0, fontWeight: 400 }}>Avg friends per user:</h3>
-      <h2 style={{ margin: '12px 0 0 0', fontWeight: 600 }}>
-        {avg_friends?.toFixed(2)}
-      </h2>
-    </div>
+        {/* Friendship Analytics */}
+        <div style={styles.card}>
+          <FriendshipAnalytics />
+          <h3 style={{ margin: 0, fontWeight: 400 }}>Avg friends per user:</h3>
+          <h2 style={{ margin: '12px 0 0 0', fontWeight: 600 }}>
+            {avg_friends?.toFixed(2)}
+          </h2>
+        </div>
 
-    {/* Events Filter Row */}
-    <div style={{ marginBottom: 24 }}>
-      <form style={{ display: "flex", gap: 16, alignItems: "flex-end", marginBottom: 16 }}>
-        <div>
-          <label>Show events:<br />
-            <select
-              value={eventGranularity}
-              onChange={e => setEventGranularity(e.target.value)}
-              style={{ minWidth: 160 }}
-            >
-              <option value="daily">Daily Events</option>
-              <option value="weekly">Weekly Events</option>
-              <option value="monthly">Monthly Events</option>
-            </select>
-          </label>
+        {/* Reactions Analytics */}
+        <div style={styles.card}>
+          <ReactionsAnalytics />
         </div>
-        <div>
-          <label>Start date:<br />
-            <input
-              type="date"
-              value={eventStartDate}
-              onChange={e => setEventStartDate(e.target.value)}
-            />
-          </label>
+
+        {/* Events User Analytics */}
+        <div style={styles.card}>
+          <EventsUserAnalytics />
         </div>
-        <div>
-          <label>End date:<br />
-            <input
-              type="date"
-              value={eventEndDate}
-              onChange={e => setEventEndDate(e.target.value)}
-            />
-          </label>
+
+        
+
+        {/* Events Filter and Chart */}
+        <div style={styles.card}>
+          <form style={{ display: "flex", gap: 16, alignItems: "flex-end", marginBottom: 16 }}>
+            <div>
+              <label>Show events:<br />
+                <select value={eventGranularity} onChange={e => setEventGranularity(e.target.value)} style={{ minWidth: 160 }}>
+                  <option value="daily">Daily Events</option>
+                  <option value="weekly">Weekly Events</option>
+                  <option value="monthly">Monthly Events</option>
+                </select>
+              </label>
+            </div>
+            <div>
+              <label>Start date:<br />
+                <input type="date" value={eventStartDate} onChange={e => setEventStartDate(e.target.value)} />
+              </label>
+            </div>
+            <div>
+              <label>End date:<br />
+                <input type="date" value={eventEndDate} onChange={e => setEventEndDate(e.target.value)} />
+              </label>
+            </div>
+            <div>
+              <button type="button" onClick={fetchEventDataByRange} disabled={!eventStartDate || !eventEndDate}>
+                Apply
+              </button>
+            </div>
+          </form>
+          {groupEventsByDateAndType(eventChartData, eventChartGranularity).length > 0 &&
+            Array.from(new Set(eventChartData.map(d => d.type))).length > 0 && (
+              <MultiLineEventChart
+                data={groupEventsByDateAndType(eventChartData, eventChartGranularity)}
+                eventTypes={Array.from(new Set(eventChartData.map(d => d.type)))}
+                granularity={eventChartGranularity}
+                title={eventChartTitle}
+              />
+            )}
         </div>
-        <div>
-          <button
-            type="button"
-            onClick={fetchEventDataByRange}
-            disabled={!eventStartDate || !eventEndDate}
-          >
-            Apply
-          </button>
-        </div>
-      </form>
-      {groupEventsByDateAndType(eventChartData, eventChartGranularity).length > 0 &&
-        Array.from(new Set(eventChartData.map(d => d.type))).length > 0 && (
-          <MultiLineEventChart
-            data={groupEventsByDateAndType(eventChartData, eventChartGranularity)}
-            eventTypes={Array.from(new Set(eventChartData.map(d => d.type)))}
-            granularity={eventChartGranularity}
-            title={eventChartTitle}
-          />
-        )}
+      </div>
     </div>
-  </div>
-);
+  );
 }
+
+const styles = {
+  card: {
+    border: '1px solid #ccc',
+    borderRadius: 8,
+    padding: 16,
+    background: '#fafafa',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+  }
+};

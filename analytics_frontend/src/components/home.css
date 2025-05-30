@@ -1,39 +1,67 @@
 /* home.css */
 
-/* Style for input fields */
-input[type="date"] {
-  padding: 8px;
-  border: 2px solid #ccc;
-  border-radius: 4px;
-  font-size: 16px;
-  transition: border-color 0.3s;
+/* General Card Styling */
+.card {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 24px;
 }
 
-input[type="date"]:focus {
-  border-color: #007bff; /* Change border color on focus */
-  outline: none;
+/* Table Styling */
+.table-container {
+  width: 100%;
+  margin-bottom: 24px;
 }
 
-/* Style for select dropdowns */
-select {
-  padding: 8px;
-  border: 2px solid #ccc;
-  border-radius: 4px;
-  font-size: 16px;
-  background-color: #f8f8f8;
-  transition: border-color 0.3s;
+.table-container table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-select:focus {
-  border-color: #007bff;
-  outline: none;
+.table-container th, .table-container td {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 1px solid #ddd;
 }
 
-/* Style for buttons */
+.table-container tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.table-container tr:hover {
+  background-color: #f1f1f1;
+}
+
+.table-container th {
+  background-color: #007bff;
+  color: white;
+}
+
+/* Color Coding for Text */
+.text-highlight {
+  color: #007bff;
+}
+
+.text-success {
+  color: #28a745;
+}
+
+.text-warning {
+  color: #ffc107;
+}
+
+.text-danger {
+  color: #dc3545;
+}
+
+/* Button Styling */
 button {
   padding: 8px 16px;
   background-color: #007bff;
-  color: black;
+  color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -42,31 +70,43 @@ button {
 }
 
 button:hover {
-  background-color: #0056b3; /* Darker shade on hover */
+  background-color: #0056b3;
 }
 
 button:disabled {
-  background-color: #cccccc; /* Gray background when disabled */
+  background-color: #cccccc;
   cursor: not-allowed;
 }
 
-/* Style for labels */
-label {
-  font-weight: bold;
-  display: block;
-  margin-bottom: 4px;
+/* Input and Select Styling */
+input[type="date"], select {
+  padding: 8px;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+  transition: border-color 0.3s;
 }
 
-/* Style for form container */
-form {
-  display: flex;
-  gap: 16px;
-  align-items: flex-end;
-  margin-bottom: 16px;
+input[type="date"]:focus, select:focus {
+  border-color: #007bff;
+  outline: none;
 }
 
-/* Style for form sections */
-form > div {
-  display: flex;
-  flex-direction: column;
+/* Search Input Styling */
+.search-input {
+  margin-bottom: 8px;
+  padding: 8px;
+  width: 220px;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+/* Chart Container Styling */
+.chart-container {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
 }
