@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import Login from "./components/login";
 import Dashboard from "./components/HomeComponent"
 import "./App.css";
+import EventTitleRangeChart from "./components/EventCountByDateChart";
 
-const SettingsComponent = () => <div className="content">⚙️ This is the Settings component.</div>;
 
 function App() {
   // Restore token from sessionStorage, but treat "null" as null
@@ -27,7 +27,7 @@ function App() {
 
   const renderContent = () => {
     if (activeTab === "home") return <Dashboard />;
-    if (activeTab === "settings") return <SettingsComponent />;
+    if (activeTab === "settings") return <EventTitleRangeChart />;
     return null;
   };
 
