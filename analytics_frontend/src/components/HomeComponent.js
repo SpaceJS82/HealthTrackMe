@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import TimeSeriesChart from './TimeSeriesChart';
 import MultiLineEventChart from './MultiEventChart';
+import './home.css';
+
+
 
 
 export default function Dashboard() {
@@ -13,15 +16,57 @@ export default function Dashboard() {
   const [eventPerDay, setEventPerDay] = useState([]);
   const [eventPerWeek, setEventPerWeek] = useState([]);
   const [eventPerMonth, setEventPerMonth] = useState([]);
+  const [eventStartDate, setEventStartDate] = useState('');
+  const [eventEndDate, setEventEndDate] = useState('');
+  const [userStartDate, setUserStartDate] = useState('');
+  const [userEndDate, setUserEndDate] = useState('');
 
-  function groupEventsByDateAndType(data) {
-    const grouped = {};
-    data.forEach(({ date, type, count }) => {
-      if (!grouped[date]) grouped[date] = { date };
-      grouped[date][type] = count;
-    });
-    return Object.values(grouped);
+  
+
+
+
+
+function fetchEventDataByRange() {
+  if (!eventStartDate || !eventEndDate) return;
+
+  let endpoint = '';
+  let setData;
+
+  if (eventGranularity === 'daily') {
+    endpoint = `http://localhost:1004/analytics/events/per-day?start=${eventStartDate}&end=${eventEndDate}`;
+    setData = setEventPerDay;
+  } else if (eventGranularity === 'weekly') {
+    endpoint = `http://localhost:1004/analytics/events/per-week?start=${eventStartDate}&end=${eventEndDate}`;
+    setData = setEventPerWeek;
+  } else if (eventGranularity === 'monthly') {
+    endpoint = `http://localhost:1004/analytics/events/per-month?start=${eventStartDate}&end=${eventEndDate}`;
+    setData = setEventPerMonth;
   }
+
+  fetch(endpoint, {
+    headers: {
+      'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+    }
+  })
+    .then(res => res.json())
+    .then(setData)
+    .catch(console.error);
+}
+
+  function groupEventsByDateAndType(data, granularity) {
+  const grouped = {};
+  data.forEach(item => {
+    let xKey;
+    if (granularity === 'daily') xKey = item.date;
+    else if (granularity === 'weekly') xKey = item.date || String(item.week); // use .date if backend provides it, else .week
+    else if (granularity === 'monthly') xKey = item.date || item.month;
+    else xKey = item.date;
+
+    if (!grouped[xKey]) grouped[xKey] = { date: xKey };
+    grouped[xKey][item.type] = item.count;
+  });
+  return Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date));
+}
 
   
 
@@ -36,66 +81,34 @@ export default function Dashboard() {
       .catch(console.error);
   }, []);
 
-useEffect(() => {
-  fetch('http://localhost:1004/analytics/users/new-users/daily', {
+function fetchUserDataByRange() {
+  if (!userStartDate || !userEndDate) return;
+
+  let endpoint = '';
+  let setData;
+
+  if (selected === 'daily') {
+    endpoint = `http://localhost:1004/analytics/users/new-users/daily?start=${userStartDate}&end=${userEndDate}`;
+    setData = setDailyData;
+  } else if (selected === 'weekly') {
+    endpoint = `http://localhost:1004/analytics/users/new-users/weekly?start=${userStartDate}&end=${userEndDate}`;
+    setData = setWeeklyData;
+  } else if (selected === 'monthly') {
+    endpoint = `http://localhost:1004/analytics/users/new-users/monthly?start=${userStartDate}&end=${userEndDate}`;
+    setData = setMonthlyData;
+  }
+
+  fetch(endpoint, {
     headers: {
       'Authorization': `Bearer ${sessionStorage.getItem('token')}`
     }
   })
     .then(res => res.json())
-    .then(setDailyData)
+    .then(setData)
     .catch(console.error);
-}, []);
+}
 
-  useEffect(() => {
-    fetch('http://localhost:1004/analytics/users/new-users/weekly', {
-    headers: {
-      'Authorization': `Bearer ${sessionStorage.getItem('token')}`
-    }
-  })
-      .then(res => res.json())
-      .then(setWeeklyData)
-      .catch(console.error);
-  }, []);
 
-  useEffect(() => {
-    fetch('http://localhost:1004/analytics/users/new-users/monthly', {
-      headers: {
-        'Authorization': `Bearer ${sessionStorage.getItem('token')}`
-      }
-    })
-      .then(res => res.json())
-      .then(setMonthlyData)
-      .catch(console.error);
-    }, []);
-
-  useEffect(() => {
-    fetch('http://localhost:1004/analytics/events/per-day', {
-      headers: {
-        'Authorization': `Bearer ${sessionStorage.getItem('token')}`
-      }
-    })
-      .then(res => res.json())
-      .then(setEventPerDay)
-      .catch(console.error);
-    fetch('http://localhost:1004/analytics/events/per-week', {
-      headers: {
-        'Authorization': `Bearer ${sessionStorage.getItem('token')}`
-      }
-    })
-      .then(res => res.json())
-      .then(setEventPerWeek)
-      .catch(console.error);
-      
-    fetch('http://localhost:1004/analytics/events/per-month', {
-      headers: {
-        'Authorization': `Bearer ${sessionStorage.getItem('token')}`
-      }
-    })
-      .then(res => res.json())
-      .then(setEventPerMonth)
-      .catch(console.error);
-  }, []);
 
     let eventChartData, eventChartGranularity, eventChartTitle;
   if (eventGranularity === 'daily') {
@@ -126,67 +139,135 @@ useEffect(() => {
     granularity = 'monthly';
     title = 'Monthly New Users';
   }
+   
 
   // Before your return statement in Dashboard:
-console.log('Grouped event data:', groupEventsByDateAndType(eventChartData));
-console.log('Event types:', Array.from(new Set(eventChartData.map(d => d.type))));
-
+  console.log('Grouped event data:', groupEventsByDateAndType(eventChartData, eventChartGranularity));
   return (
-    <div>
-      <div style={{ marginBottom: 16 }}>
-        <label>
-          Show:
-          <select value={selected} onChange={e => setSelected(e.target.value)} style={{ marginLeft: 8 }}>
-            <option value="daily">Daily New Users</option>
-            <option value="weekly">Weekly New Users</option>
-            <option value="monthly">Monthly New Users</option>
-          </select>
-        </label>
-      </div>
-      <TimeSeriesChart 
-        data={chartData}
-        granularity={granularity}
-        title={title}
-      />
-
-      <div
-        style={{
-          border: '1px solid #ccc',
-          borderRadius: '8px',
-          padding: '16px',
-          marginTop: '24px',
-          width: '220px',
-          marginLeft: 'auto',
-          marginRight: 'auto',
-          textAlign: 'center',
-          background: '#fafafa'
-        }}
-      >
-        <h3 style={{ margin: 0, fontWeight: 400 }}>Avg friends per user:</h3>
-        <h2 style={{ margin: '12px 0 0 0', fontWeight: 600 }}>
-          {avg_friends?.toFixed(2)}
-        </h2>
-      </div>
-
-      <div style={{ marginBottom: 16, marginTop: 32 }}>
-      <label>
-        Show events:
-        <select value={eventGranularity} onChange={e => setEventGranularity(e.target.value)} style={{ marginLeft: 8 }}>
-          <option value="daily">Daily Events</option>
-          <option value="weekly">Weekly Events</option>
-          <option value="monthly">Monthly Events</option>
-        </select>
-      </label>
-    </div>
-    {groupEventsByDateAndType(eventChartData).length > 0 &&
-      Array.from(new Set(eventChartData.map(d => d.type))).length > 0 && (
-        <MultiLineEventChart
-          data={groupEventsByDateAndType(eventChartData)}
-          eventTypes={Array.from(new Set(eventChartData.map(d => d.type)))}
-          granularity={eventChartGranularity}
-          title={eventChartTitle}
+  <div style={{ padding: 32, maxWidth: 900, margin: "0 auto" }}>
+    {/* New Users Filter Row */}
+    <div style={{ marginBottom: 24 }}>
+      <form style={{ display: "flex", gap: 16, alignItems: "flex-end", marginBottom: 16 }}>
+        <div>
+          <label>Show:<br />
+            <select
+              value={selected}
+              onChange={e => setSelected(e.target.value)}
+              style={{ minWidth: 160 }}
+            >
+              <option value="daily">Daily New Users</option>
+              <option value="weekly">Weekly New Users</option>
+              <option value="monthly">Monthly New Users</option>
+            </select>
+          </label>
+        </div>
+        <div>
+          <label>Start date:<br />
+            <input
+              type="date"
+              value={userStartDate}
+              onChange={e => setUserStartDate(e.target.value)}
+            />
+          </label>
+        </div>
+        <div>
+          <label>End date:<br />
+            <input
+              type="date"
+              value={userEndDate}
+              onChange={e => setUserEndDate(e.target.value)}
+            />
+          </label>
+        </div>
+        <div>
+          <button
+            type="button"
+            onClick={fetchUserDataByRange}
+            disabled={!userStartDate || !userEndDate}
+          >
+            Apply
+          </button>
+        </div>
+      </form>
+      {chartData.length > 0 && (
+        <TimeSeriesChart 
+          data={chartData}
+          granularity={granularity}
+          title={title}
         />
       )}
     </div>
-  );
+
+    {/* Avg Friends Card Row */}
+    <div style={{
+      border: '1px solid #ccc',
+      borderRadius: 8,
+      padding: 16,
+      width: 220,
+      textAlign: 'center',
+      background: '#fafafa',
+      margin: "32px auto"
+    }}>
+      <h3 style={{ margin: 0, fontWeight: 400 }}>Avg friends per user:</h3>
+      <h2 style={{ margin: '12px 0 0 0', fontWeight: 600 }}>
+        {avg_friends?.toFixed(2)}
+      </h2>
+    </div>
+
+    {/* Events Filter Row */}
+    <div style={{ marginBottom: 24 }}>
+      <form style={{ display: "flex", gap: 16, alignItems: "flex-end", marginBottom: 16 }}>
+        <div>
+          <label>Show events:<br />
+            <select
+              value={eventGranularity}
+              onChange={e => setEventGranularity(e.target.value)}
+              style={{ minWidth: 160 }}
+            >
+              <option value="daily">Daily Events</option>
+              <option value="weekly">Weekly Events</option>
+              <option value="monthly">Monthly Events</option>
+            </select>
+          </label>
+        </div>
+        <div>
+          <label>Start date:<br />
+            <input
+              type="date"
+              value={eventStartDate}
+              onChange={e => setEventStartDate(e.target.value)}
+            />
+          </label>
+        </div>
+        <div>
+          <label>End date:<br />
+            <input
+              type="date"
+              value={eventEndDate}
+              onChange={e => setEventEndDate(e.target.value)}
+            />
+          </label>
+        </div>
+        <div>
+          <button
+            type="button"
+            onClick={fetchEventDataByRange}
+            disabled={!eventStartDate || !eventEndDate}
+          >
+            Apply
+          </button>
+        </div>
+      </form>
+      {groupEventsByDateAndType(eventChartData, eventChartGranularity).length > 0 &&
+        Array.from(new Set(eventChartData.map(d => d.type))).length > 0 && (
+          <MultiLineEventChart
+            data={groupEventsByDateAndType(eventChartData, eventChartGranularity)}
+            eventTypes={Array.from(new Set(eventChartData.map(d => d.type)))}
+            granularity={eventChartGranularity}
+            title={eventChartTitle}
+          />
+        )}
+    </div>
+  </div>
+);
 }

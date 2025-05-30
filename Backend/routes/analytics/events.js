@@ -20,11 +20,22 @@ async function requireAdmin(req, res, next) {
 // 1. Events per day (by type)
 router.get('/per-day', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const result = await db('event')
-        .select(db.raw('type, DATE(date) as date'))
-        .count('* as count')
-        .groupByRaw('type, DATE(date)')
-        .orderBy(['date', 'type']);
+    const { start, end } = req.query;
+
+    let query = db('event')
+      .select('type')
+      .select(db.raw('DATE(date) as date'))
+      .count('* as count')
+      .groupBy('type')
+      .groupByRaw('DATE(date)')
+      .orderBy('date', 'asc')
+      .orderBy('type', 'asc');
+
+    if (start && end) {
+      query = query.whereBetween(db.raw('DATE(date)'), [start, end]);
+    }
+
+    const result = await query;
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -34,11 +45,19 @@ router.get('/per-day', authenticateToken, requireAdmin, async (req, res) => {
 // 2. Events per week (by type)
 router.get('/per-week', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const result = await db('event')
-        .select(db.raw('type, YEARWEEK(date, 1) as week'))
-        .count('* as count')
-        .groupByRaw('type, YEARWEEK(date, 1)')
-        .orderBy(['week', 'type']);
+    const { start, end } = req.query;
+
+    let query = db('event')
+      .select(db.raw('type, CONCAT(YEAR(date), "-W", LPAD(WEEK(date, 1), 2, "0")) as date'))
+      .count('* as count')
+      .groupByRaw('type, CONCAT(YEAR(date), "-W", LPAD(WEEK(date, 1), 2, "0"))')
+      .orderBy(['date', 'type']);
+
+    if (start && end) {
+      query = query.whereBetween(db.raw('DATE(date)'), [start, end]);
+    }
+
+    const result = await query;
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -48,11 +67,19 @@ router.get('/per-week', authenticateToken, requireAdmin, async (req, res) => {
 // 3. Events per month (by type)
 router.get('/per-month', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const result = await db('event')
-        .select(db.raw('type, DATE_FORMAT(date, "%Y-%m") as month'))
-        .count('* as count')
-        .groupByRaw('type, DATE_FORMAT(date, "%Y-%m")')
-        .orderBy(['month', 'type']);
+    const { start, end } = req.query;
+
+    let query = db('event')
+      .select(db.raw('type, DATE_FORMAT(date, "%Y-%m") as month'))
+      .count('* as count')
+      .groupByRaw('type, DATE_FORMAT(date, "%Y-%m")')
+      .orderBy(['month', 'type']);
+
+    if (start && end) {
+      query = query.whereBetween(db.raw('DATE(date)'), [start, end]);
+    }
+
+    const result = await query;
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

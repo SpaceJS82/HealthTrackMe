@@ -13,7 +13,14 @@ export default function MultiLineEventChart({ data, eventTypes, granularity, tit
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={data}>
           <CartesianGrid stroke="#ccc" />
-          <XAxis dataKey="date" />
+          <XAxis
+            dataKey="date"
+            tickFormatter={date => {
+              if (granularity === 'weekly') return date; // or format as "Week 21, 2024"
+              if (granularity === 'monthly') return date; // "2024-05"
+              return new Date(date).toLocaleDateString();
+            }}
+          />
           <YAxis />
           <Tooltip />
           <Legend />

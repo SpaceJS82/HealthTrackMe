@@ -18,13 +18,22 @@ async function requireAdmin(req, res, next) {
 }
 
 // 1. New users per day
+
 router.get('/new-users/daily', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const result = await db('user')
-        .select(db.raw('DATE(date_joined) as date'))
-        .count('* as count')
-        .groupByRaw('DATE(date_joined)')
-        .orderBy('date', 'desc');
+    const { start, end } = req.query;
+
+    let query = db('user')
+      .select(db.raw('DATE(date_joined) as date'))
+      .count('* as count')
+      .groupByRaw('DATE(date_joined)')
+      .orderBy('date', 'desc');
+
+    if (start && end) {
+      query = query.whereBetween(db.raw('DATE(date_joined)'), [start, end]);
+    }
+
+    const result = await query;
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -34,11 +43,19 @@ router.get('/new-users/daily', authenticateToken, requireAdmin, async (req, res)
 // 2. New users per week
 router.get('/new-users/weekly', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const result = await db('user')
-        .select(db.raw('CONCAT(YEAR(date_joined), "-W", LPAD(WEEK(date_joined, 1), 2, "0")) as date'))
-        .count('* as count')
-        .groupByRaw('CONCAT(YEAR(date_joined), "-W", LPAD(WEEK(date_joined, 1), 2, "0"))')
-        .orderBy('date', 'desc');
+    const { start, end } = req.query;
+
+    let query = db('user')
+      .select(db.raw('CONCAT(YEAR(date_joined), "-W", LPAD(WEEK(date_joined, 1), 2, "0")) as date'))
+      .count('* as count')
+      .groupByRaw('CONCAT(YEAR(date_joined), "-W", LPAD(WEEK(date_joined, 1), 2, "0"))')
+      .orderBy('date', 'desc');
+
+    if (start && end) {
+      query = query.whereBetween(db.raw('DATE(date_joined)'), [start, end]);
+    }
+
+    const result = await query;
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -48,11 +65,19 @@ router.get('/new-users/weekly', authenticateToken, requireAdmin, async (req, res
 // 3. New users per month
 router.get('/new-users/monthly', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const result = await db('user')
-        .select(db.raw('DATE_FORMAT(date_joined, "%Y-%m") as date'))
-        .count('* as count')
-        .groupByRaw('DATE_FORMAT(date_joined, "%Y-%m")')
-        .orderBy('date', 'desc');
+    const { start, end } = req.query;
+
+    let query = db('user')
+      .select(db.raw('DATE_FORMAT(date_joined, "%Y-%m") as date'))
+      .count('* as count')
+      .groupByRaw('DATE_FORMAT(date_joined, "%Y-%m")')
+      .orderBy('date', 'desc');
+
+    if (start && end) {
+      query = query.whereBetween(db.raw('DATE(date_joined)'), [start, end]);
+    }
+
+    const result = await query;
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

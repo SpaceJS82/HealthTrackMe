@@ -34,8 +34,8 @@ export default function Login({ setToken }) {
 
   return (
     <div className="login-wrapper d-flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
-      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4Q6Gf2aSP4eDXB8Miphtr37CMZZQ5oXLH2yaXMJ2w8e2ZtHTl7GptT4jmndRuHDT" crossorigin="anonymous"></link>
-      
+      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4Q6Gf2aSP4eDXB8Miphtr37CMZZQ5oXLH2yaXMJ2w8e2ZtHTl7GptT4jmndRuHDT" crossOrigin="anonymous"></link>
+
       <form
         className={`row g-3 needs-validation ${validated ? 'was-validated' : ''}`}
         noValidate
