@@ -1,0 +1,26 @@
+
+THE "WHAT THE FITNESS?!" LICENSE (WTFPL-Fit Edition)
+Version 1.0, June 2025
+
+Copyright (C) 2025 SpaceJS82
+
+Everyone is permitted to use this app for absolutely any purpose, including (but not limited to):
+
+- Tracking how many burritos you’ve eaten.
+- Competing with your cat in step challenges.
+- Bragging to friends about sleep you didn’t actually get.
+
+By using this software, you agree to:
+
+- Do cool stuff.
+- Not blame us if your smartwatch explodes or if your friends unfriend you after seeing your workout logs.
+- Share good vibes and snacks (optional but encouraged).
+
+There is no warranty. Like, literally. If this app causes your toaster to join a gym or makes your fridge insecure about its calorie count, that’s on you.
+
+If you modify it, you must yell "I'm a Health Hacker!" at least once (preferably in a public place), but no one will check, so do what you want.
+
+Now go forth and be healthy… or don’t. We’re not your fitness coach.
+
+❤️ With questionable seriousness,  
+The HealthTrackMe Team
