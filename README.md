@@ -44,8 +44,6 @@ cd HealthTrackMe
 
 ### Environment Setup
 
-Copy `.env.example` to `.env` in both `backend` and `frontend` (if available) and update variables:
-
 ```dotenv
 # Example .env
 DB_URI=mongodb://localhost:27017/healthtrackme
@@ -62,13 +60,12 @@ PORT=4000
 ```bash
 cd backend
 npm install
-npm run migrate   # (if using migrations)
 npm start
 ```
 
 ### 2. Install React Frontend
 ```bash
-cd frontend
+cd analytics_frontend
 npm install
 npm start
 ```
