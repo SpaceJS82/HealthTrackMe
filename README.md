@@ -97,7 +97,7 @@ Please adhere to the existing code style and include tests where appropriate.
 
 ## License
 
-This project is licensed under the WHAT THE FITNESS License. See [LICENSE](./License) for details.
+This project is licensed under the WHAT THE FITNESS License. See [LICENSE](./License.txt) for details.
 
 ---
 
