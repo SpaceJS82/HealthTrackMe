@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../../db/db');
-const { authenticateToken } = require('../auth');
+const { authenticateToken } = require('./analyticsAuth');
 
 // Helper to check if user is admin
 async function isAdmin(userId) {

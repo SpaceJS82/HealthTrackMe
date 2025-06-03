@@ -3,11 +3,17 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('./db/db'); // Knex instance
 const path = require('path');
-const cors = require('cors');
-
 
 const app = express();
 const router = express.Router();
+
+const cors = require('cors');
+
+app.use(cors({
+  origin: 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 const friendsRoutes = require('./routes/friends');
 const eventsRoutes = require('./routes/events');
@@ -16,26 +22,27 @@ const profileRoutes = require('./routes/profile');
 const inviteRoutes = require('./routes/invites');
 const {authenticateToken} = require("./routes/auth");
 const notificationRoutes = require('./routes/notifications');
+
+//Analytics
 const userAnalyticsRoutes = require('./routes/analytics/users');
 const eventAnalyticsRoutes = require('./routes/analytics/events');
 const friendshipAnalyticsRoutes = require('./routes/analytics/friendship');
 const reactionsAnalyticsRoutes = require('./routes/analytics/reactions');
 const inappEventsAnalyticsRoutes = require('./routes/analytics/inappevents');
-const analyticsLogin = require('./routes/analytics/login');
+const loginAnalyticsRoutes = require('./routes/analytics/login');
 
-app.use(cors());
 // Middleware to parse JSON bodies
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static(path.join(__dirname, '../public'))); 
 app.use(express.json());
 
 // Secret key for JWT signing
 const JWT_SECRET = process.env.JWT_SECRET;
-// Change to a more secure secret in production
+ // Change to a more secure secret in production
 
 // Serve login page (optional, as you might just return an API response)
 
 router.get("/check-connectivity", async (req, res) => {
-  res.json(200);
+    res.json(200);
 });
 
 // Handle login POST request
@@ -58,9 +65,9 @@ router.post('/login', async (req, res) => {
 
     // Create a JWT token and send it to the client
     const token = jwt.sign(
-        { id: user.iduser, username: user.username, name: user.name },
-        JWT_SECRET,
-        { expiresIn: '15m' } // Token expires in 15 min
+      { id: user.iduser, username: user.username, name: user.name },
+      JWT_SECRET,
+      { expiresIn: '15m' } // Token expires in 15 min
     );
 
     res.status(200).json({
@@ -148,13 +155,14 @@ app.use('/friends', friendsRoutes);
 app.use('/events', eventsRoutes);
 app.use('/health', healthRoutes);
 app.use('/invites', inviteRoutes);
+app.use('/notifications', notificationRoutes);
+
 app.use('/analytics/users', userAnalyticsRoutes);
 app.use('/analytics/events', eventAnalyticsRoutes);
 app.use('/analytics/friendship', friendshipAnalyticsRoutes);
 app.use('/analytics/reactions', reactionsAnalyticsRoutes);
 app.use('/analytics/inappevents', inappEventsAnalyticsRoutes);
-app.use('/analytics/login', analyticsLogin);
-
+app.use('/analytics/login', loginAnalyticsRoutes);
 
 module.exports = router;
 

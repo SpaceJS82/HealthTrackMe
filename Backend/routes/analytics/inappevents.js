@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../../db/db');
-const {authenticateToken} = require("../auth");
+const {authenticateToken} = require("./analyticsAuth");
 const dayjs = require('dayjs');
 
 router.post('/upload', async (req, res) => {
