@@ -8,14 +8,14 @@ export default function FriendshipAnalytics() {
   useEffect(() => {
     const token = sessionStorage.getItem('token');
     Promise.all([
-      fetch('http://localhost:1004/analytics/friendship/per-day', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      fetch('https://api.getyoa.app/yoaapi/analytics/friendship/per-day', {
+        headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
       }).then(res => res.json()),
-      fetch('http://localhost:1004/analytics/friendship/invites-per-day', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      fetch('https://api.getyoa.app/yoaapi/analytics/friendship/invites-per-day', {
+        headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
       }).then(res => res.json()),
-      fetch('http://localhost:1004/analytics/friendship/invite-conversion', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      fetch('https://api.getyoa.app/yoaapi/analytics/friendship/invite-conversion', {
+        headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
       }).then(res => res.json())
     ]).then(([friendships, invites, conversion]) => {
       // Defensive: Only use arrays

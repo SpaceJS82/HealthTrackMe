@@ -36,13 +36,13 @@ function fetchEventDataByRange() {
   let setData;
 
   if (eventGranularity === 'daily') {
-    endpoint = `http://localhost:1004/analytics/events/per-day?start=${eventStartDate}&end=${eventEndDate}`;
+    endpoint = `https://api.getyoa.app/yoaapi/analytics/events/per-day?start=${eventStartDate}&end=${eventEndDate}`;
     setData = setEventPerDay;
   } else if (eventGranularity === 'weekly') {
-    endpoint = `http://localhost:1004/analytics/events/per-week?start=${eventStartDate}&end=${eventEndDate}`;
+    endpoint = `https://api.getyoa.app/yoaapi/analytics/events/per-week?start=${eventStartDate}&end=${eventEndDate}`;
     setData = setEventPerWeek;
   } else if (eventGranularity === 'monthly') {
-    endpoint = `http://localhost:1004/analytics/events/per-month?start=${eventStartDate}&end=${eventEndDate}`;
+    endpoint = `https://api.getyoa.app/yoaapi/analytics/events/per-month?start=${eventStartDate}&end=${eventEndDate}`;
     setData = setEventPerMonth;
   }
 
@@ -74,7 +74,7 @@ function fetchEventDataByRange() {
   
 
   useEffect(() => {
-    fetch('http://localhost:1004/analytics/users/avg-friends', {
+    fetch('https://api.getyoa.app/yoaapi/analytics/users/avg-friends', {
       headers: {
         'Authorization': `Bearer ${sessionStorage.getItem('token')}`
       }
@@ -91,13 +91,13 @@ function fetchUserDataByRange() {
   let setData;
 
   if (selected === 'daily') {
-    endpoint = `http://localhost:1004/analytics/users/new-users/daily?start=${userStartDate}&end=${userEndDate}`;
+    endpoint = `https://api.getyoa.app/yoaapi/analytics/users/new-users/daily?start=${userStartDate}&end=${userEndDate}`;
     setData = setDailyData;
   } else if (selected === 'weekly') {
-    endpoint = `http://localhost:1004/analytics/users/new-users/weekly?start=${userStartDate}&end=${userEndDate}`;
+    endpoint = `https://api.getyoa.app/yoaapi/analytics/users/new-users/weekly?start=${userStartDate}&end=${userEndDate}`;
     setData = setWeeklyData;
   } else if (selected === 'monthly') {
-    endpoint = `http://localhost:1004/analytics/users/new-users/monthly?start=${userStartDate}&end=${userEndDate}`;
+    endpoint = `https://api.getyoa.app/yoaapi/analytics/users/new-users/monthly?start=${userStartDate}&end=${userEndDate}`;
     setData = setMonthlyData;
   }
 

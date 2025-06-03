@@ -7,22 +7,22 @@ export default function ReactionsAnalytics() {
 
   useEffect(() => {
     const token = sessionStorage.getItem('token');
-    fetch('http://localhost:1004/analytics/reactions/top-events', {
-      headers: { 'Authorization': `Bearer ${token}` }
+    fetch('https://api.getyoa.app/yoaapi/analytics/reactions/top-events', {
+      headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
       .then(data => setTopEvents(Array.isArray(data) ? data : []))
       .catch(() => setTopEvents([]));
 
-    fetch('http://localhost:1004/analytics/reactions/reaction-types', {
-      headers: { 'Authorization': `Bearer ${token}` }
+    fetch('https://api.getyoa.app/yoaapi/analytics/reactions/reaction-types', {
+      headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
       .then(data => setReactionTypes(Array.isArray(data) ? data : []))
       .catch(() => setReactionTypes([]));
 
-    fetch('http://localhost:1004/analytics/reactions/most-common', {
-      headers: { 'Authorization': `Bearer ${token}` }
+    fetch('https://api.getyoa.app/yoaapi/analytics/reactions/most-common', {
+      headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
       .then(data => setMostCommonReaction(data && !data.error ? data : null))

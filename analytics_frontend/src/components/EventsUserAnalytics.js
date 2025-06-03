@@ -9,22 +9,22 @@ export default function EventsUserAnalytics() {
 
   useEffect(() => {
     const token = sessionStorage.getItem('token');
-    fetch('http://localhost:1004/analytics/events/top-users', {
-      headers: { 'Authorization': `Bearer ${token}` }
+    fetch('https://api.getyoa.app/yoaapi/analytics/events/top-users', {
+      headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
       .then(data => setTopUsers(Array.isArray(data) ? data : []))
       .catch(() => setTopUsers([]));
 
-    fetch('http://localhost:1004/analytics/events/avg-time-between', {
-      headers: { 'Authorization': `Bearer ${token}` }
+    fetch('https://api.getyoa.app/yoaapi/analytics/events/avg-time-between', {
+      headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
       .then(data => setAvgTimeBetween(Array.isArray(data) ? data : []))
       .catch(() => setAvgTimeBetween([]));
 
-    fetch('http://localhost:1004/analytics/events/type-distribution', {
-      headers: { 'Authorization': `Bearer ${token}` }
+    fetch('https://api.getyoa.app/yoaapi/analytics/events/type-distribution', {
+      headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
       .then(data => setTypeDistribution(Array.isArray(data) ? data : []))

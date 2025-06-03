@@ -12,7 +12,7 @@ HealthTrackMe is a comprehensive health-tracking platform that enables users to 
 ## Features
 
 ### Core Application
-- Record and store daily health metrics (e.g., steps, calories, sleep).
+- Record and store daily health metrics (e.g., steps, stress, sleep).
 - RESTful API endpoints for data access and management.
 - Secure user authentication and authorization.
 
