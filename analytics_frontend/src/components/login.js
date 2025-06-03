@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 
 
 async function loginUser(credentials) {
-  const response = await fetch('http://localhost:1004/login', {
+  const response = await fetch('http://localhost:1004/analytics/login/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(credentials)

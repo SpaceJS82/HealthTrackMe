@@ -21,6 +21,7 @@ const eventAnalyticsRoutes = require('./routes/analytics/events');
 const friendshipAnalyticsRoutes = require('./routes/analytics/friendship');
 const reactionsAnalyticsRoutes = require('./routes/analytics/reactions');
 const inappEventsAnalyticsRoutes = require('./routes/analytics/inappevents');
+const analyticsLogin = require('./routes/analytics/login');
 
 app.use(cors());
 // Middleware to parse JSON bodies
@@ -152,6 +153,7 @@ app.use('/analytics/events', eventAnalyticsRoutes);
 app.use('/analytics/friendship', friendshipAnalyticsRoutes);
 app.use('/analytics/reactions', reactionsAnalyticsRoutes);
 app.use('/analytics/inappevents', inappEventsAnalyticsRoutes);
+app.use('/analytics/login', analyticsLogin);
 
 
 module.exports = router;
