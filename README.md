@@ -33,7 +33,7 @@ HealthTrackMe is a comprehensive health-tracking platform that enables users to 
 ### Prerequisites
 - Node.js (v14+)
 - npm 
-- MongoDB / SQL (or your preferred DB)
+- mysql
 
 ### Clone the Repository
 
@@ -75,7 +75,7 @@ The frontend runs on `http://localhost:3000` and consumes the API.
 
 ## Usage
 
-1. Register a new user via the frontend or API.
+1. Register a new user.
 2. Log in and add your daily health metrics.
 3. Use the "Friends" tab to search and add friends.
 4. Share specific metrics on your social feed.
@@ -97,7 +97,7 @@ Please adhere to the existing code style and include tests where appropriate.
 
 ## License
 
-This project is licensed under the WHAT THE FITNESS License. See [LICENSE](./License.txt) for details.
+This project is licensed under the HealthTrackMe License. See [LICENSE](./License.txt) for details.
 
 ---
 
