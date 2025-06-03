@@ -1,19 +1,31 @@
-import React from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
+
+// Custom function to parse weekly dates
+function parseWeeklyDate(weekStr) {
+  const [year, week] = weekStr.split('-W').map(Number);
+  // Create a date object for the first day of the year
+  const date = new Date(year, 0, 1);
+  // Add the number of weeks to get the correct date
+  date.setDate(date.getDate() + (week - 1) * 7);
+  return date;
+}
 
 function formatDate(dateStr, granularity) {
   if (granularity === 'monthly') {
     const [year, month] = dateStr.split('-');
     return `${year}-${month}`;
   }
+
+  if (granularity === 'weekly') {
+    return dateStr;
+  }
+
   const date = new Date(dateStr);
   switch (granularity) {
     case 'daily':
       return date.toLocaleDateString();
-    case 'weekly':
-      return dateStr.startsWith('20') ? dateStr : `Week of ${date.toLocaleDateString()}`;
     default:
       return date.toISOString();
   }
@@ -25,7 +37,13 @@ export default function TimeSeriesChart({
   title = 'New Users Over Time',
   lines = [{ dataKey: 'count', color: '#8884d8', name: 'Count' }]
 }) {
-  const sortedData = [...data].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const sortedData = [...data].sort((a, b) => {
+    if (granularity === 'weekly') {
+      return parseWeeklyDate(a.date) - parseWeeklyDate(b.date);
+    } else {
+      return new Date(a.date) - new Date(b.date);
+    }
+  });
 
   return (
     <div className="p-4">
