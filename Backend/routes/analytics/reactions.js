@@ -44,7 +44,8 @@ router.get('/reaction-types', authenticateToken, async (req, res) => {
         .select('reaction')
         .count('* as count')
         .groupBy('reaction')
-        .orderBy('count', 'desc');
+        .orderBy('count', 'desc')
+        .limit(10);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
