@@ -3,8 +3,17 @@
 **HealthTrackMe** is a comprehensive health-tracking platform that enables users to monitor their stress, sleep, and workouts while connecting with friends to share and celebrate progress. Whether you're looking to stay fit, improve your sleep, or just live healthier with your friends, HealthTrackMe has you covered.
 
 ---
+## Projec Purpose
 
-## 📱 Features
+HealthTrackMe was created to upgrade the experience of the default iOS Health app by going beyond raw data. While the native app collects useful metrics, it lacks personalized insights and meaningful visualizations. Our platform fills that gap by:
+
+- Highlighting your progress over time through dynamic charts and summaries.
+- Offering contextual feedback to help users understand how they’re improving.
+- Adding a social layer to health tracking, so it’s not just numbers, but shared progress with friends.
+- In short, HealthTrackMe transforms raw health data into actionable insight and motivation.
+
+---
+##  Features
 
 
 - 🫂 **Social Features** – Add friends, view their progress, and share metrics.
@@ -30,6 +39,7 @@
 
 ### 📲 Mobile App
 Download the official app YOA health tracker & coach from the App Store
+
 ### 🖥 Admin Panel (Developers)
 
 To run the React admin panel locally:
@@ -41,6 +51,14 @@ npm install
 npm start
 ```
 ---
+
+## Authors
+
+This project was created and maintained by:
+
+Luka Verč 
+Jaka Volaj 
+Klemen Novak 
 
 ## License
 

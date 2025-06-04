@@ -6,9 +6,9 @@ export default function FriendshipAnalytics() {
   const [chartData, setChartData] = useState([]);
   const [inviteConversion, setInviteConversion] = useState(null);
   const [avgFriends, setAvgFriends] = useState(null);
-
+  const token = sessionStorage.getItem('token');
   useEffect(() => {
-    const token = sessionStorage.getItem('token');
+    
     Promise.all([
       fetch('https://api.getyoa.app/yoaapi/analytics/friendship/per-day', {
         headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` },
@@ -52,8 +52,7 @@ export default function FriendshipAnalytics() {
 
   useEffect(() => {
     fetch('https://api.getyoa.app/yoaapi/analytics/users/avg-friends', {
-      headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` },zation: `Bearer ${sessionStorage.getItem('token')}`,
-      
+      headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
     })
       .then((res) => res.json())
       .then((data) => setAvgFriends(data.average))
