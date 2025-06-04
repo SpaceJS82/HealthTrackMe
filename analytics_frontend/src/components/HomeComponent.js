@@ -37,11 +37,14 @@ function fetchEventDataByRange() {
 
   if (eventGranularity === 'daily') {
     endpoint = `https://api.getyoa.app/yoaapi/analytics/events/per-day?start=${eventStartDate}&end=${eventEndDate}`;
+    endpoint = `https://api.getyoa.app/yoaapi/analytics/events/per-day?start=${eventStartDate}&end=${eventEndDate}`;
     setData = setEventPerDay;
   } else if (eventGranularity === 'weekly') {
     endpoint = `https://api.getyoa.app/yoaapi/analytics/events/per-week?start=${eventStartDate}&end=${eventEndDate}`;
+    endpoint = `https://api.getyoa.app/yoaapi/analytics/events/per-week?start=${eventStartDate}&end=${eventEndDate}`;
     setData = setEventPerWeek;
   } else if (eventGranularity === 'monthly') {
+    endpoint = `https://api.getyoa.app/yoaapi/analytics/events/per-month?start=${eventStartDate}&end=${eventEndDate}`;
     endpoint = `https://api.getyoa.app/yoaapi/analytics/events/per-month?start=${eventStartDate}&end=${eventEndDate}`;
     setData = setEventPerMonth;
   }
@@ -83,11 +86,14 @@ function fetchUserDataByRange() {
 
   if (selected === 'daily') {
     endpoint = `https://api.getyoa.app/yoaapi/analytics/users/new-users/daily?start=${userStartDate}&end=${userEndDate}`;
+    endpoint = `https://api.getyoa.app/yoaapi/analytics/users/new-users/daily?start=${userStartDate}&end=${userEndDate}`;
     setData = setDailyData;
   } else if (selected === 'weekly') {
     endpoint = `https://api.getyoa.app/yoaapi/analytics/users/new-users/weekly?start=${userStartDate}&end=${userEndDate}`;
+    endpoint = `https://api.getyoa.app/yoaapi/analytics/users/new-users/weekly?start=${userStartDate}&end=${userEndDate}`;
     setData = setWeeklyData;
   } else if (selected === 'monthly') {
+    endpoint = `https://api.getyoa.app/yoaapi/analytics/users/new-users/monthly?start=${userStartDate}&end=${userEndDate}`;
     endpoint = `https://api.getyoa.app/yoaapi/analytics/users/new-users/monthly?start=${userStartDate}&end=${userEndDate}`;
     setData = setMonthlyData;
   }

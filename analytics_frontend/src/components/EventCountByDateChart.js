@@ -19,6 +19,8 @@ const EventCountByDateChart = () => {
         const token = sessionStorage.getItem('token');
         const response = await fetch('https://api.getyoa.app/yoaapi/analytics/inappevents/titles', { // Updated endpoint
           headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
+        const response = await fetch('https://api.getyoa.app/yoaapi/analytics/inappevents/titles', { // Updated endpoint
+          headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
         });
         
         // if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -54,6 +56,8 @@ const EventCountByDateChart = () => {
         title: selectedEvent
       });
 
+      const response = await fetch(`https://api.getyoa.app/yoaapi/analytics/inappevents/count-by-date?${params}`, {
+        headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
       const response = await fetch(`https://api.getyoa.app/yoaapi/analytics/inappevents/count-by-date?${params}`, {
         headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
       });
