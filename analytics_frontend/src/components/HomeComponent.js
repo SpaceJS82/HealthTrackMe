@@ -13,7 +13,7 @@ export default function Dashboard() {
   const [dailyData, setDailyData] = useState([]);
   const [weeklyData, setWeeklyData] = useState([]);
   const [monthlyData, setMonthlyData] = useState([]);
-  const [avg_friends, setAvgFriends] = useState(null);
+
   const [selected, setSelected] = useState('daily');
   const [eventGranularity, setEventGranularity] = useState('daily');
   const [eventPerDay, setEventPerDay] = useState([]);
@@ -36,13 +36,13 @@ function fetchEventDataByRange() {
   let setData;
 
   if (eventGranularity === 'daily') {
-    endpoint = `http://localhost:1004/analytics/events/per-day?start=${eventStartDate}&end=${eventEndDate}`;
+    endpoint = `https://api.getyoa.app/yoaapi/analytics/events/per-day?start=${eventStartDate}&end=${eventEndDate}`;
     setData = setEventPerDay;
   } else if (eventGranularity === 'weekly') {
-    endpoint = `http://localhost:1004/analytics/events/per-week?start=${eventStartDate}&end=${eventEndDate}`;
+    endpoint = `https://api.getyoa.app/yoaapi/analytics/events/per-week?start=${eventStartDate}&end=${eventEndDate}`;
     setData = setEventPerWeek;
   } else if (eventGranularity === 'monthly') {
-    endpoint = `http://localhost:1004/analytics/events/per-month?start=${eventStartDate}&end=${eventEndDate}`;
+    endpoint = `https://api.getyoa.app/yoaapi/analytics/events/per-month?start=${eventStartDate}&end=${eventEndDate}`;
     setData = setEventPerMonth;
   }
 
@@ -73,16 +73,7 @@ function fetchEventDataByRange() {
 
   
 
-  useEffect(() => {
-    fetch('http://localhost:1004/analytics/users/avg-friends', {
-      headers: {
-        'Authorization': `Bearer ${sessionStorage.getItem('token')}`
-      }
-    })
-      .then(res => res.json())
-      .then(data => setAvgFriends(data.average))
-      .catch(console.error);
-  }, []);
+  
 
 function fetchUserDataByRange() {
   if (!userStartDate || !userEndDate) return;
@@ -91,13 +82,13 @@ function fetchUserDataByRange() {
   let setData;
 
   if (selected === 'daily') {
-    endpoint = `http://localhost:1004/analytics/users/new-users/daily?start=${userStartDate}&end=${userEndDate}`;
+    endpoint = `https://api.getyoa.app/yoaapi/analytics/users/new-users/daily?start=${userStartDate}&end=${userEndDate}`;
     setData = setDailyData;
   } else if (selected === 'weekly') {
-    endpoint = `http://localhost:1004/analytics/users/new-users/weekly?start=${userStartDate}&end=${userEndDate}`;
+    endpoint = `https://api.getyoa.app/yoaapi/analytics/users/new-users/weekly?start=${userStartDate}&end=${userEndDate}`;
     setData = setWeeklyData;
   } else if (selected === 'monthly') {
-    endpoint = `http://localhost:1004/analytics/users/new-users/monthly?start=${userStartDate}&end=${userEndDate}`;
+    endpoint = `https://api.getyoa.app/yoaapi/analytics/users/new-users/monthly?start=${userStartDate}&end=${userEndDate}`;
     setData = setMonthlyData;
   }
 
@@ -185,11 +176,9 @@ function fetchUserDataByRange() {
         {/* Friendship Analytics */}
         <div style={styles.card}>
           <FriendshipAnalytics />
-          <h3 style={{ margin: 0, fontWeight: 400 }}>Avg friends per user:</h3>
-          <h2 style={{ margin: '12px 0 0 0', fontWeight: 600 }}>
-            {avg_friends?.toFixed(2)}
-          </h2>
         </div>
+
+        
 
         {/* Reactions Analytics */}
         <div style={styles.card}>

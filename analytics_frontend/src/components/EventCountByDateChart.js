@@ -17,11 +17,11 @@ const EventCountByDateChart = () => {
     const fetchEventTitles = async () => {
       try {
         const token = sessionStorage.getItem('token');
-        const response = await fetch('http://localhost:1004/analytics/inappevents/titles', { // Updated endpoint
-          headers: { 'Authorization': `Bearer ${token}` }
+        const response = await fetch('https://api.getyoa.app/yoaapi/analytics/inappevents/titles', { // Updated endpoint
+          headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
         });
         
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        // if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         
         const data = await response.json();
         setEventTitles(data.titles || []);
@@ -54,11 +54,11 @@ const EventCountByDateChart = () => {
         title: selectedEvent
       });
 
-      const response = await fetch(`http://localhost:1004/analytics/inappevents/count-by-date?${params}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await fetch(`https://api.getyoa.app/yoaapi/analytics/inappevents/count-by-date?${params}`, {
+        headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
       });
 
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      // if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       
       const data = await response.json();
       setChartData(data || []);

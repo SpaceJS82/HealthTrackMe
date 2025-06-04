@@ -17,8 +17,8 @@ export default function EventTitleRangeChart() {
   useEffect(() => {
     const token = sessionStorage.getItem('token');
 
-    fetch('http://localhost:1004/analytics/events/titles', {
-      headers: { 'Authorization': `Bearer ${token}` }
+    fetch('https://api.getyoa.app/yoaapi/analytics/events/titles', {
+      headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
       .then(json => {
@@ -39,8 +39,8 @@ export default function EventTitleRangeChart() {
     setLoading(true);
     setError(null);
 
-    fetch(`http://localhost:1004/analytics/events/count-by-title?title=${encodeURIComponent(selectedTitle)}&startDate=${startDate}&endDate=${endDate}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+    fetch(`https://api.getyoa.app/yoaapi/analytics/events/count-by-title?title=${encodeURIComponent(selectedTitle)}&startDate=${startDate}&endDate=${endDate}`, {
+      headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
       .then(json => {

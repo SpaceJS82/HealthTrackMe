@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import PaginatedTable from './PaginatedTable';
+import Typography from '@mui/material/Typography';
 
 export default function EventsUserAnalytics() {
   const [topUsers, setTopUsers] = useState([]);
@@ -9,22 +11,22 @@ export default function EventsUserAnalytics() {
 
   useEffect(() => {
     const token = sessionStorage.getItem('token');
-    fetch('http://localhost:1004/analytics/events/top-users', {
-      headers: { 'Authorization': `Bearer ${token}` }
+    fetch('https://api.getyoa.app/yoaapi/analytics/events/top-users', {
+      headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
       .then(data => setTopUsers(Array.isArray(data) ? data : []))
       .catch(() => setTopUsers([]));
 
-    fetch('http://localhost:1004/analytics/events/avg-time-between', {
-      headers: { 'Authorization': `Bearer ${token}` }
+    fetch('https://api.getyoa.app/yoaapi/analytics/events/avg-time-between', {
+      headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
       .then(data => setAvgTimeBetween(Array.isArray(data) ? data : []))
       .catch(() => setAvgTimeBetween([]));
 
-    fetch('http://localhost:1004/analytics/events/type-distribution', {
-      headers: { 'Authorization': `Bearer ${token}` }
+    fetch('https://api.getyoa.app/yoaapi/analytics/events/type-distribution', {
+      headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
       .then(data => setTypeDistribution(Array.isArray(data) ? data : []))
@@ -57,35 +59,62 @@ export default function EventsUserAnalytics() {
     allTypeKeys.some(type => u[type] !== undefined && u[type] !== null)
   );
 
+  // Table columns
+  const topUsersColumns = [
+    { id: 'username', label: 'User' },
+    { id: 'name', label: 'Name' },
+    { id: 'event_count', label: 'Events', align: 'right' }
+  ];
+  const topUsersRows = topUsers.map(u => ({
+    id: u.user_iduser,
+    username: u.user?.username || u.user_iduser,
+    name: u.user?.name || '',
+    event_count: u.event_count
+  }));
+
+  const avgTimeColumns = [
+    { id: 'username', label: 'User' },
+    { id: 'avg_hours', label: 'Avg Time (h)', align: 'right' }
+  ];
+  const avgTimeRows = filteredAvg.map(u => ({
+    id: u.user_id,
+    username: u.username,
+    avg_hours: u.avg_hours !== null ? u.avg_hours.toFixed(2) : 'N/A'
+  }));
+
+  const distColumns = [
+    { id: 'username', label: 'User' },
+    ...allTypeKeys.map(type => ({
+      id: type,
+      label: type.replace('_pct', ''),
+      align: 'right'
+    }))
+  ];
+  const distRows = filteredDist.map(u => ({
+    id: u.user_id,
+    username: u.username,
+    ...Object.fromEntries(
+      allTypeKeys.map(type => [
+        type,
+        u[type] !== undefined && u[type] !== null ? `${u[type]}%` : '-'
+      ])
+    )
+  }));
+
   return (
     <div style={{ margin: "32px 0" }}>
-      <h2><b>Event User Analytics</b></h2>
+      <h2>
+        <b>Event User Analytics</b>
+      </h2>
 
-      <h3>Top 10 Users by Number of Events</h3>
+      <Typography variant="h6" sx={{ mt: 2 }}>Top 10 Users by Number of Events</Typography>
       {topUsers.length === 0 ? (
-        <div>No data</div>
+        <Typography color="text.secondary">No data</Typography>
       ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 24 }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>User</th>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>Name</th>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>Events</th>
-            </tr>
-          </thead>
-          <tbody>
-            {topUsers.map(u => (
-              <tr key={u.user_iduser}>
-                <td>{u.user?.username || u.user_iduser}</td>
-                <td>{u.user?.name || ''}</td>
-                <td>{u.event_count}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <PaginatedTable columns={topUsersColumns} rows={topUsersRows} rowsPerPageOptions={[5, 10, 25]} defaultRowsPerPage={5} />
       )}
 
-      <h3>Average Time Between Events (hours)</h3>
+      <Typography variant="h6" sx={{ mt: 2 }}>Average Time Between Events (hours)</Typography>
       <input
         type="text"
         placeholder="Search by username..."
@@ -93,28 +122,13 @@ export default function EventsUserAnalytics() {
         onChange={e => setSearchAvg(e.target.value)}
         style={{ marginBottom: 8, padding: 4, width: 220 }}
       />
-      {filteredAvg.length === 0 ? (
-        <div>No data</div>
+      {avgTimeRows.length === 0 ? (
+        <Typography color="text.secondary">No data</Typography>
       ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 24 }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>User</th>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>Avg Time (h)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredAvg.map(u => (
-              <tr key={u.user_id}>
-                <td>{u.username}</td>
-                <td>{u.avg_hours !== null ? u.avg_hours.toFixed(2) : 'N/A'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <PaginatedTable columns={avgTimeColumns} rows={avgTimeRows} rowsPerPageOptions={[5, 10, 25]} defaultRowsPerPage={5} />
       )}
 
-      <h3>Event Type Distribution per User (%)</h3>
+      <Typography variant="h6" sx={{ mt: 2 }}>Event Type Distribution per User (%)</Typography>
       <input
         type="text"
         placeholder="Search by username..."
