@@ -1,8 +1,9 @@
 {
   "name": "analytics_frontend",
+  "main": "main.js",
+  "homepage": "./",
   "version": "0.1.0",
   "private": true,
-  
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
@@ -21,18 +22,23 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "electron .",
+    "react-start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "package": "electron-packager . Marko --platform=darwin --arch=x64 --out=dist --overwrite"
   },
-
   "eslintConfig": {
     "extends": [
       "react-app",
       "react-app/jest"
     ]
   },
+  "files": [
+  "build/**/*",
+  "main.js"
+  ],
   "browserslist": {
     "production": [
       ">0.2%",
@@ -44,5 +50,9 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "electron": "^36.4.0",
+    "electron-packager": "^17.1.2"
   }
 }
