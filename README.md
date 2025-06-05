@@ -38,14 +38,14 @@ HealthTrackMe was created to upgrade the experience of the default iOS Health ap
 ## 🚀 Getting Started
 
 ### 📲 Mobile App
-Download the official app YOA health tracker & coach from the App Store
+Download the official app YOA health tracker & coach from the App Store:https://apps.apple.com/si/app/yoa-health-tracker-coach/id6642662318
 
 ### 🖥 Admin Panel (Developers)
 
 To run the React admin panel locally:
 
 ```bash
-git clone https://github.com/your-org/healthtrackme-admin.git
+git clone https://github.com/SpaceJS82/HealthTrackMe.git
 cd healthtrackme/analytics_frontend
 npm install
 npm start
@@ -56,8 +56,8 @@ npm start
 
 This project was created and maintained by:
 
-Luka Verč 
-Jaka Volaj 
+Luka Verč,
+Jaka Volaj, 
 Klemen Novak 
 
 ## License
