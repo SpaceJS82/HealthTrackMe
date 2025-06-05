@@ -2,7 +2,7 @@
 //  DetailsView.swift
 //  CitrusWatch Watch App
 //
-//  Created by Klemen Novak on 22. 9. 24.
+//  Created by Klemen Novak on 4. 6. 25.
 //
 
 import SwiftUI
