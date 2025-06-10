@@ -1,0 +1,50 @@
+Yoa Health Tracker & Coach
+
+Enostavnejši prikaz zdravstvenih podatkov z praktičnimi predlogi.
+
+Leto izdelave: 2025
+
+Avtor1 Luka Verč
+Avtor2 Jaka Volaj
+Avtor3 Klemen Novak
+
+Domača stran: https://www.getyoa.app/
+Vir podatkov: https://api.getyoa.app/yoaapi/
+Koda: https://github.com/SpaceJS82/HealthTrackMe
+
+Kategorizacija: celovita informacijska rešitev, mobilna aplikacija, namizna aplikacija, spletno zaledje aplikacije.
+
+Oznake: React, Electron, MySQL, ExpressJS, Scrum, AgilenRazvoj, GitHub, UporabaAI, NodeJS, Nginx, REST, Swift, UIKit, SwiftUI, Wordpress
+
+OPIS PROJEKTA:
+Yoa: Tvoj prijazen zdravstveni trener
+
+Utrujen/-a od zmede v svojih zdravstvenih podatkih? Spoznaj Yoa – prikupen oranžen sadež in tvojega osebnega trenerja za dobro počutje, ki tvoje podatke iz Apple Watch pretvori v zabavne in prijazne vpoglede.
+
+Yoa ti pomaga razumeti, kako dobro spiš, kako si pod stresom, kako fit postajaš in kako tvoje navade vplivajo na tvoje telo. Deluje brezhibno s HealthKit in Apple Watch ter spremlja tvoje vitalne funkcije, kot so srčni utrip, HRV, dihalna frekvenca, kakovost spanja in več.
+
+Če tvoji podatki padejo, Yoa to pokaže. Če napreduješ, Yoa praznuje s tabo. Kot igriv zdravstveni prijatelj, ki te resnično razume.
+
+Spremljaj in razumi:
+	•	Kakovost spanja, stres, raven telesne pripravljenosti in regeneracijo
+	•	Vitalni podatki kot so HRV, srčni utrip, dihalna frekvenca
+	•	Tvoj napredek skozi čas s koristnimi povzetki
+
+Pametneje do zdravja:
+	•	Prijazni nasveti, prilagojeni tvojim podatkom
+	•	Koristna priporočila, ki jih boš dejansko želel/-a upoštevati
+	•	Dnevna javljanja in opomniki od Yoa
+
+Spremljanje navad in dnevnik:
+	•	Zabeleži navade, kot so alkohol, uporaba zaslonov pred spanjem ali spanje s hišnimi ljubljenčki
+	•	Oglej si, kako vplivajo na tvoj spanec in stres skozi čas
+
+Ohrani motivacijo:
+	•	Spremljaj svoje vadbe in regeneracijo
+	•	Poveži se s prijatelji in deli napredek za dodatno motivacijo
+
+Yoa zdravje naredi enostavno, podporno in resnično prikupno. Pozabi na surove podatke in si prenesi Yoa še danes.
+
+Združljivo z Apple Watch in HealthKit
+Podpora za iPhone + Apple Watch
+Zasebno in varno sledenje zdravju
