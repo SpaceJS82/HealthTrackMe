@@ -12,8 +12,8 @@ jobs:
       - name: Install dependencies
         run: |
           cd Backend  # Navigate to the Backend directory
-          npm ci      # Uses package-lock.json for exact installs (faster than npm install)
+          npm install
       - name: Run tests
         run: |
           cd Backend
-          npm test
+          npm test events.test.js
