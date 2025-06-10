@@ -167,7 +167,11 @@ app.use('/analytics/login', loginAnalyticsRoutes);
 module.exports = router;
 
 const PORT = process.env.PORT || 1004;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
 
