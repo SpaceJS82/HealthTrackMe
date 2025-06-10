@@ -17,3 +17,4 @@ jobs:
         run: |
           cd Backend
           npm test events.test.js
+          npm test auth.test.js
