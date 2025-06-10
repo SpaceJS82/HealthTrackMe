@@ -1,16 +1,16 @@
-# HealthTrackMe
+# Yoa health tracker & coach
 
-**HealthTrackMe** is a comprehensive health-tracking platform that enables users to monitor their stress, sleep, and workouts while connecting with friends to share and celebrate progress. Whether you're looking to stay fit, improve your sleep, or just live healthier with your friends, HealthTrackMe has you covered.
+**Yoa health tracker & coach** is a comprehensive health-tracking platform that enables users to monitor their stress, sleep, and workouts while connecting with friends to share and celebrate progress. Whether you're looking to stay fit, improve your sleep, or just live healthier with your friends, Yoa health tracker & coach has you covered.
 
 ---
 ## Projec Purpose
 
-HealthTrackMe was created to upgrade the experience of the default iOS Health app by going beyond raw data. While the native app collects useful metrics, it lacks personalized insights and meaningful visualizations. Our platform fills that gap by:
+Yoa health tracker & coach was created to upgrade the experience of the default iOS Health app by going beyond raw data. While the native app collects useful metrics, it lacks personalized insights and meaningful visualizations. Our platform fills that gap by:
 
 - Highlighting your progress over time through dynamic charts and summaries.
 - Offering contextual feedback to help users understand how they’re improving.
 - Adding a social layer to health tracking, so it’s not just numbers, but shared progress with friends.
-- In short, HealthTrackMe transforms raw health data into actionable insight and motivation.
+- In short, Yoa health tracker & coach transforms raw health data into actionable insight and motivation.
 
 ---
 ##  Features
@@ -38,18 +38,12 @@ HealthTrackMe was created to upgrade the experience of the default iOS Health ap
 ## 🚀 Getting Started
 
 ### 📲 Mobile App
-Download the official app YOA health tracker & coach from the App Store:https://apps.apple.com/si/app/yoa-health-tracker-coach/id6642662318
+Download the official app Yoa health tracker & coach from the App Store: https://apps.apple.com/si/app/yoa-health-tracker-coach/id6642662318
 
-### 🖥 Admin Panel (Developers)
+### 🖥 Admin Panel
 
-To run the React admin panel locally:
-
-```bash
-git clone https://github.com/SpaceJS82/HealthTrackMe.git
-cd healthtrackme/analytics_frontend
-npm install
-npm start
-```
+You can download our admin pannel here: https://getyoa.app/index.php/developer/
+(this sadly works only on ios)
 ---
 
 ## Authors
@@ -62,7 +56,7 @@ Klemen Novak
 
 ## License
 
-This project is licensed under the HealthTrackMe License. See [LICENSE](./License.txt) for details.
+This project is licensed under the Yoa health tracker & coach License. See [LICENSE](./License.txt) for details.
 
 ---
 
